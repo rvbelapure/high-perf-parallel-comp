@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "sort.hh"
+#include <cilk/reducer_opadd.h>
 
 /**
  *  Pivots the keys of A[0:N-1] around a given pivot value. The number
@@ -26,16 +27,40 @@
  *   pivot. That is, they appear in
  *   A[(*p_n_lt)+(*p_n_eq):(*p_n_lt)+(*p_n_eq)+(*p_n_gt)-1].
  */
+
+#if 0
+/* Original implementation (with reducer added) */
 void partition (keytype pivot, int N, keytype* A,
 		int* p_n_lt, int* p_n_eq, int* p_n_gt)
 {
   /* Count how many elements of A are less than (lt), equal to (eq),
      or greater than (gt) the pivot value. */
   int n_lt = 0, n_eq = 0, n_gt = 0;
-  for (int i = 0; i < N; ++i) {
-    if (A[i] < pivot) ++n_lt;
-    else if (A[i] == pivot) ++n_eq;
-    else ++n_gt;
+
+  if(N < 500)
+  {
+	  for (int i = 0; i < N; ++i) {
+	    if (A[i] < pivot) ++n_lt;
+	    else if (A[i] == pivot) ++n_eq;
+	    else ++n_gt;
+	  }
+  }
+  else
+  {
+
+	  cilk::reducer_opadd<int> l;
+	  cilk::reducer_opadd<int> e;
+	  cilk::reducer_opadd<int> g;
+	  _Cilk_for(int i = 0 ; i < N ; ++i)
+	  {
+		  if(A[i] < pivot) ++l;
+		  else if (A[i] == pivot) ++e;
+		  else ++g;
+	  }
+
+	  n_lt = l.get_value();
+	  n_eq = e.get_value();
+	  n_gt = g.get_value();
   }
 
   keytype* A_orig = newCopy (N, A);
@@ -67,6 +92,75 @@ void partition (keytype pivot, int N, keytype* A,
   if (p_n_eq) *p_n_eq = n_eq;
   if (p_n_gt) *p_n_gt = n_gt;
 }
+
+#endif
+
+#if 1
+/* Serial In-Place Partition */
+void partition (keytype pivot, int N, keytype* A,
+		int* p_n_lt, int* p_n_eq, int* p_n_gt)
+{
+	register int low = 0, high = N-1;
+	int temp;
+
+	for(low = 0 ; low <= high ; )
+	{
+		while(A[low] < pivot) low++;
+		while(A[high] >= pivot) high--;
+		if(low <= high)
+		{
+			temp = A[low];
+			A[low] = A[high];
+			A[high] = temp;
+			low++;
+			high--;
+		}
+	}
+
+	if (p_n_lt) *p_n_lt = low;
+	if (p_n_eq) *p_n_eq = 0;
+	if (p_n_gt) *p_n_gt = N - low;
+}
+#endif
+
+#if 0
+/* in progress */
+void partition (keytype pivot, int N, keytype* A,
+		int* p_n_lt, int* p_n_eq, int* p_n_gt)
+{
+	register int low = 0, high = N-1;
+	int temp;
+
+	if(N < 200)
+	{
+		for(low = 0 ; low <= high ; )
+		{
+			while(A[low] < pivot) low++;
+			while(A[high] >= pivot) high--;
+			if(low <= high)
+			{
+				temp = A[low];
+				A[low] = A[high];
+				A[high] = temp;
+				low++;
+				high--;
+			}
+		}
+	}
+	else
+	{
+		int n_lt1, n_eq1, n_gt1;
+		int n_lt2, n_eq2, n_gt2
+		partition(pivot, N/2, A, &n_lt1, &n_eq1, &n_gt1);
+		partition(pivot, N - (N/2), A + (N/2), &n_lt2, &n_eq2, &n_gt2);
+	}
+
+	if (p_n_lt) *p_n_lt = low;
+	if (p_n_eq) *p_n_eq = 0;
+	if (p_n_gt) *p_n_gt = N - low;
+}
+
+#endif
 
 void
 quickSort (int N, keytype* A)
