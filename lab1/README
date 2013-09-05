@@ -1,0 +1,98 @@
+# LAB 1		: Optimizing the Quicksort using Cilk Plus
+# Author 	: Raghavendra Belapure
+# GTID		: 902866342
+-------------------------------------------------------------------------------
+
+Part 1 : Quicksort has inherent parallelism. The recursive calls to quicksort
+	 routine do not have any dependency with each other and can be safely
+	 parallelized using _Cilk_spawn.
+
+-------------------------------------------------------------------------------
+
+Part 2 : The partition routine
+
+There is a chance to parallelize the partition routine to get more efficiency.
+In the assignment, three different types of partition routines are implemented.
+They are isolated from each other using macros as switches, such that any one
+of the three can be enabled. The three macros are PARALLEL, REDUCER and
+IN_PLACE_SERIAL
+
+Each of them is explained here in the same sequence as they were developed, and
+the rationale behind them. The PARALLEL routine is the one that gives maximum 
+performance and is enabled by default in the submitted code.
+
+
+1. Implementation using Reducers
+
+   This implementation build on the original partition routine included in the
+   assignment. It first counts number of elements less than, equal to and 
+   greater than pivot in order to calculate the array indices for these three
+   categories of elements in the partitioned array.
+
+   The process of counting is parallelized using _Cilk_for primitive. Using only
+   this primitive will cause data races in the counters. This can be avoided by
+   using reducers provided by Cilk (cilk::reducer_opadd).
+
+   Disadvantages : 
+   	a. This implementation allocates another array of equal length and 
+	   copies all the elements to the new array before changing the 
+	   original one. This introduces excessive overhead which can be 
+	   reduced by in place partitioning.
+	b. The introduction of reducers introduces locks (mutexes) for each 
+	   counter, which actually serializes the critical sections with added 
+	   overhead. Thus, we need another method without serialization.
+
+   How to use : Enable macro REDUCER in parallel-qsort.cc
+
+
+2. In Place, Serial Partitioning
+   This implementation tackles the overhead of allocating extra space in the
+   partition phase. The implementation is as follows.
+   We initialize two pointers, one at beginning (low)  and other at the end 
+   (high). We increment the low pointer till it finds element larger than the
+   pivot. We decrement the high pointer till it finds element smaller than the
+   pivot. Once these elements are found, we swap them and continue this till
+   low and high pointers cross over each other.
+
+   Advantage : We have reduced number of passes over the array as well as we
+   	       have eleminated the need of allocating the space equal to the
+	       length of the array.
+   
+   This method is very efficient and gives highest performance (approximately
+   45-50 million keys per second).
+
+   How to use : Enable macro IN_PLACE_SERIAL in parallel-qsort.cc
+
+3. Parallel, Recursive partitioning using Divide and Conquor.
+   The aim of the assignment was not only to optimize the quicksort, but also
+   to implement a parallel version of the algorithm. Thus, we use a divide and
+   conquor methodology on the serial version of partition step above.
+   In general, we divide the array to be partitioned in two parts and call the
+   partition routine recursively on them. Here we do two way partitioning 
+   instead of three way partitioning to reduce the overload. We partition the
+   elemnts into block lower than pivot and a block with elements higher than or
+   equal to pivot. Thus, split and recursive partition gives four blocks of 
+   numbers having following properties.
+
+   | smaller 1 | greater or equal 1 | smaller 2 | greater or equal 2 |
+
+   We perform in-place swap operation on 2nd and 3rd block by again keeping low
+   and high pointers and swapping each element. Note that, here we do not need to
+   preserve the order of elements as this is just partitioning step and not a 
+   sorting step.
+
+   We also keep a tunable parameter P, which decides when to perform parallel
+   partition and when to switch over to the serial version described above.
+   
+   The recursive partition call is parallelized using the _Cilk_spawn primitive
+   Unlike quicksort, we have to perform a _Cilk_sync here as the next procedure
+   of merging is dependent on data produced in this parallelized procedure.
+   As creation of too many threads will involve lot of overhead and since our
+   serial version of partitioning is also fast, it is beneficial to limit the
+   number of threads to 4-6. Thus, we set the parameter P very large (around
+   2 million) to get optimum performance from both parallel and serial 
+   algorithms.
+
+   This implementation gives performance of around 40-45 million keys per sec.
+
+   How to use : Enable macro PARALLEL in parallel-qsort.cc
