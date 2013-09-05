@@ -31,7 +31,7 @@ void printArray(int N, keytype* A)
 	printf("\n");
 }
 
-#if PARALLEL
+#ifdef PARALLEL
 /* Parallel in-place partitioning using divide and conquor */
 void partition (keytype pivot, int N, keytype* A,
 		int* p_n_lt, int* p_n_eq, int* p_n_gt)
@@ -224,7 +224,7 @@ void partition (keytype pivot, int N, keytype* A,
 
 #endif
 
-#if IN_PLACE_SERIAL
+#ifdef IN_PLACE_SERIAL
 /* Serial In-Place Partition */
 void partition (keytype pivot, int N, keytype* A,
 		int* p_n_lt, int* p_n_eq, int* p_n_gt)
