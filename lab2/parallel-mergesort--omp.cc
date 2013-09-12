@@ -139,7 +139,7 @@ void pmerge(keytype *T, int p1, int r1, int p2, int r2, keytype *A, int p3)
 
 void p_mergesort(keytype * A, int p, int r, keytype * B, int s)
 {
-	int G = 5000000;
+	int G = 500000;
 	int n = r - p + 1;
 	if(n < G)
 	{
@@ -154,7 +154,7 @@ void p_mergesort(keytype * A, int p, int r, keytype * B, int s)
 	p_mergesort(A, p, q, T, p);
 	p_mergesort(A, q + 1, r, T, q + 1);
 	#pragma omp taskwait
-	smerge(T, p, q, q + 1, r, B, s);
+	pmerge(T, p, q, q + 1, r, B, s);
 
 	free(T);
 }
