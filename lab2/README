@@ -1,0 +1,23 @@
+# LAB 2		: Implementing and optimizing Mergesort
+# Authors 	: Raghavendra Belapure, Karanjit Singh Cheema
+# GTID		: 902866342, 902757702
+-------------------------------------------------------------------------------
+
+Part 1 : The objective was to convert Cilk plus implementation of quicksort
+	 to OpenMP. As Cilk and openMP have similar programming model, it was
+	 sufficient to convert _Cilk_spawn calls to omp tasks and the _Cilk_for
+	 statements to omp for's.
+
+-------------------------------------------------------------------------------
+
+Part 2 : Parallel mergesort algorithm in Chapter 27 of Cormen, Leiserson, 
+	 Rivest, and Stein was implemented for parallel mergesort implementation
+	 in OpenMP.
+	 The algorithm has iherent parallelism in the recursive mergesort 
+	 routine. The merging phase after the sorting was also parallelized using
+	 divide and conquor strategy.
+
+	 The performance of approximately 18-20 Million keys per second was 
+	 achieved against serial performance of approx 5 Million keys per sec.
+
+-------------------------------------------------------------------------------
