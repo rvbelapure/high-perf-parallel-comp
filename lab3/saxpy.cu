@@ -51,7 +51,16 @@ __global__ void
 saxpy (dtype a, dtype* x, dtype* y, int N)
 {
 	/* fill in your code here */
+	int total_threads = gridDim.x * blockDim.x;
+	int elements_per_thread = (N / total_threads) + 1;
+	int tid = blockIdx.x * blockDim.x + threadIdx.x;
 
+	for(int i = 0 ; i < elements_per_thread ; i++)
+	{
+		int arr_id = i * total_threads + tid;
+		if(arr_id < N)
+			y[arr_id] = a * x[arr_id] + y[arr_id];
+	}
 }
 
 
