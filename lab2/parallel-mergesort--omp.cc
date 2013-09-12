@@ -52,11 +52,45 @@ void parallel_merge(keytype *T, int p1, int r1, int p2, int r2, keytype *A, int 
 {
 	int n1 = r1 - p1 + 1;
 	int n2 = r2 - p2 + 1;
+	
 	if(n1 < n2)
 	{
 		std::swap(p1, p2);
 		std::swap(r1, r2);
 		std::swap(n1, n2);
+	}
+
+	int G = 1000000;
+	if(n1 < G)
+	{
+		int i,j,k;
+		i = p1;
+		j = p2;
+		k = p3;
+		while((i <= r1) && (j <= r2))
+		{
+			if(T[i] < T[j])
+				A[k++] = T[i++];
+			else if(T[i] == T[j])
+			{
+				A[k++] = T[i++];
+				A[k++] = T[j++];
+			}
+			else
+				A[k++] = T[j++];
+		}
+
+		if(i <= r1)
+		{
+			for( ; i <= r1 ; i++, k++)
+				A[k] = T[i];
+		}
+		if(j <= r2)
+		{
+			for( ; j <= r2 ; j++, k++)
+				A[k] = T[j];
+		}
+		return;
 	}
 	if(n1 == 0)
 		return;
@@ -73,7 +107,7 @@ void parallel_merge(keytype *T, int p1, int r1, int p2, int r2, keytype *A, int 
 
 void p_mergesort(keytype * A, int p, int r, keytype * B, int s)
 {
-	int G = 500;
+	int G = 1000;
 	int n = r - p + 1;
 	if(n < G)
 	{
