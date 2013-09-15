@@ -13,6 +13,11 @@ void matTrans(dtype* AT, dtype* A, int N)  {
 
 }
 
+__global__
+void warmup() {
+	for(int i = 0 ; i < 1000 ; i++);
+}
+
 void
 parseArg (int argc, char** argv, int* N)
 {
@@ -69,22 +74,46 @@ gpuTranspose (dtype* A, dtype* AT, int N)
   struct stopwatch_t* timer = NULL;
   long double t_gpu;
 
+  void (*kernel)(dtype* , dtype* , int );		// kernel pointer - change the association to determine which kernel to launch
+  kernel = &matTrans;
+
+  /* Now we have A as input array and AT as the output array on host side. 
+     N is the length of side for square matrix N * N */
+
+  /* 1. allocate device input output arrays */
+  dtype *d_A, *d_AT;
+  CUDA_CHECK_ERROR(cudaMalloc((void **) &d_A, N * N * sizeof(dtype)));
+  CUDA_CHECK_ERROR(cudaMalloc((void **) &d_AT, N * N * sizeof(dtype)));
+
+  /* 2. Fill the device input array */
+  CUDA_CHECK_ERROR(cudaMemcpy(d_A, A, N * N * sizeof(dtype), cudaMemcpyHostToDevice));
+
+  /* 3. Calculate gridDim and blockDim here */
+  dim3 blkDim, grdDim;
 	
-  /* Setup timers */
+  /* 4. Setup timers */
   stopwatch_init ();
   timer = stopwatch_create ();
 
-	/* warup */
-
+  /* 5. warmup */
+  cudaFree(0);
+  warmup<<<25,25>>>();
+  cudaThreadSynchronize ();
 
   stopwatch_start (timer);
-	/* run your kernel here */
-
+  /* 6. run your kernel here */
+  kernel<<<grdDim, blkDim>>>(d_AT, d_A, N);
   cudaThreadSynchronize ();
   t_gpu = stopwatch_stop (timer);
   fprintf (stderr, "GPU transpose: %Lg secs ==> %Lg billion elements/second\n",
            t_gpu, (N * N) / t_gpu * 1e-9 );
 
+  /* 7. copy the answer back to host array for further checking */
+  CUDA_CHECK_ERROR( cudaMemcpy( AT, d_AT, N * N * sizeof(dtype), cudaMemcpyDeviceToHost));
+
+  /* 8. Free the device memory */
+  CUDA_CHECK_ERROR( cudaFree(d_A));
+  CUDA_CHECK_ERROR( cudaFree(d_AT));
 }
 
 int 
