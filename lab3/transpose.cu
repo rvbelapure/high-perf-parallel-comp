@@ -4,18 +4,39 @@
 #include "cuda_utils.h"
 #include "timer.c"
 
+#define TILE_DIM   32	// make side of matrix multiple of 32
+#define BLOCK_ROWS 8
+
+#define DEBUG 0
+
+
 typedef float dtype;
 
-
-__global__ 
+__global__
 void matTrans(dtype* AT, dtype* A, int N)  {
-	/* Fill your code here */
+	int horloc = blockIdx.x * TILE_DIM + threadIdx.x;
+	int verloc = blockIdx.y * TILE_DIM + threadIdx.y;
+	int width = gridDim.x * TILE_DIM;
 
+	for (int j = 0; j < TILE_DIM; j+= BLOCK_ROWS)
+		AT[horloc * width + (verloc + j)] = A[(verloc + j)*width + horloc];
 }
 
 __global__
 void warmup() {
 	for(int i = 0 ; i < 1000 ; i++);
+}
+
+void printArray(int N, dtype *A, char *message)
+{
+	printf("%s : \n", message);
+	for(int i = 0; i < N ; i++)
+	{
+		for(int j = 0 ; j < N ; j++)
+			printf("%ld ",A[i * N + j]);
+		printf("\n");
+	}
+	printf("---------------------------\n");
 }
 
 void
@@ -77,19 +98,42 @@ gpuTranspose (dtype* A, dtype* AT, int N)
   void (*kernel)(dtype* , dtype* , int );		// kernel pointer - change the association to determine which kernel to launch
   kernel = &matTrans;
 
+  #if DEBUG
+  printArray(N, A, "input");
+  #endif
+
   /* Now we have A as input array and AT as the output array on host side. 
      N is the length of side for square matrix N * N */
+  /* 0. As per our algorithm, we have to make sure that side of the matrix is multiple of our TILE_DIM.
+     Thus, we pad the matrix with extra elements */
+  int tiled_size;
+  if (N % TILE_DIM == 0)
+	  tiled_size = N;
+  else
+  {
+	  tiled_size = ((N / TILE_DIM) + 1) * TILE_DIM;
+  }
+  dtype * padded_input = (dtype *) malloc( tiled_size * tiled_size * sizeof(dtype));
+  // we can not use memcpy as we should not copy into padded region
+  for(int i = 0 ; i < N ; i++)
+	  for(int j = 0 ; j < N ; j++)
+		  padded_input[i * tiled_size + j] = A[i * N + j];	
+  #if DEBUG
+  printArray(tiled_size, padded_input, "padded input");
+  #endif
+
 
   /* 1. allocate device input output arrays */
   dtype *d_A, *d_AT;
-  CUDA_CHECK_ERROR(cudaMalloc((void **) &d_A, N * N * sizeof(dtype)));
-  CUDA_CHECK_ERROR(cudaMalloc((void **) &d_AT, N * N * sizeof(dtype)));
+  CUDA_CHECK_ERROR(cudaMalloc((void **) &d_A, tiled_size * tiled_size * sizeof(dtype)));
+  CUDA_CHECK_ERROR(cudaMalloc((void **) &d_AT, tiled_size * tiled_size * sizeof(dtype)));
 
   /* 2. Fill the device input array */
-  CUDA_CHECK_ERROR(cudaMemcpy(d_A, A, N * N * sizeof(dtype), cudaMemcpyHostToDevice));
+  CUDA_CHECK_ERROR(cudaMemcpy(d_A, padded_input, tiled_size * tiled_size * sizeof(dtype), cudaMemcpyHostToDevice));
 
   /* 3. Calculate gridDim and blockDim here */
-  dim3 blkDim, grdDim;
+  dim3 grdDim( tiled_size / TILE_DIM, tiled_size / TILE_DIM, 1);
+  dim3 blkDim( TILE_DIM, BLOCK_ROWS, 1);
 	
   /* 4. Setup timers */
   stopwatch_init ();
@@ -102,16 +146,24 @@ gpuTranspose (dtype* A, dtype* AT, int N)
 
   stopwatch_start (timer);
   /* 6. run your kernel here */
-  kernel<<<grdDim, blkDim>>>(d_AT, d_A, N);
+  kernel<<<grdDim, blkDim>>>(d_AT, d_A, tiled_size);
   cudaThreadSynchronize ();
   t_gpu = stopwatch_stop (timer);
   fprintf (stderr, "GPU transpose: %Lg secs ==> %Lg billion elements/second\n",
            t_gpu, (N * N) / t_gpu * 1e-9 );
 
   /* 7. copy the answer back to host array for further checking */
-  CUDA_CHECK_ERROR( cudaMemcpy( AT, d_AT, N * N * sizeof(dtype), cudaMemcpyDeviceToHost));
+  CUDA_CHECK_ERROR( cudaMemcpy( padded_input, d_AT, tiled_size * tiled_size * sizeof(dtype), cudaMemcpyDeviceToHost));
+  for(int i = 0 ; i < N ; i++)
+	  for(int j = 0 ; j < N ; j++)
+		  AT[i * N + j] = padded_input[i * tiled_size + j];
+  #if DEBUG
+  printArray(tiled_size, padded_input, "padded output");
+  printArray(N, AT, "output");
+  #endif
 
   /* 8. Free the device memory */
+  free(padded_input);
   CUDA_CHECK_ERROR( cudaFree(d_A));
   CUDA_CHECK_ERROR( cudaFree(d_AT));
 }
