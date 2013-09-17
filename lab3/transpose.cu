@@ -4,7 +4,13 @@
 #include "cuda_utils.h"
 #include "timer.c"
 
-#define TILE_DIM   32	// make side of matrix multiple of 32
+/* Let each block work on chunk of data (tile).
+   Each tile is of size TILE_DIM * TILE_DIM (number of elements)
+   Each block is of size TILE_DIM * BLOCK_ROWS (number of threads in block i
+   Lets keep TILE_DIM equal to warp size (typically 32)
+*/
+
+#define TILE_DIM   32	// make sure that matrix is paaded so that it has side multiple of TILE_DIM
 #define BLOCK_ROWS 8
 
 #define DEBUG 0
@@ -12,14 +18,39 @@
 
 typedef float dtype;
 
-__global__
-void matTrans(dtype* AT, dtype* A, int N)  {
+__global__ void matTrans(dtype *AT, dtype *A, int N)
+{
+	__shared__ float tile[TILE_DIM * TILE_DIM];
+
+	/* Calculate start of tile which is to be transposed */
 	int horloc = blockIdx.x * TILE_DIM + threadIdx.x;
 	int verloc = blockIdx.y * TILE_DIM + threadIdx.y;
 	int width = gridDim.x * TILE_DIM;
 
-	for (int j = 0; j < TILE_DIM; j+= BLOCK_ROWS)
-		AT[horloc * width + (verloc + j)] = A[(verloc + j)*width + horloc];
+	/* Calculate transpose and stored in shared mem */
+	for (int i = 0; i < TILE_DIM; i += BLOCK_ROWS)
+		tile[(threadIdx.y + i) * TILE_DIM + threadIdx.x] = A[(verloc + i) * width + horloc];
+
+	/* wait for all elements to be processed before over-writing */
+	__syncthreads();
+
+	/* Calculate location of tile where the transposed elements are to be copied */
+	horloc = blockIdx.y * TILE_DIM + threadIdx.x; 
+	verloc = blockIdx.x * TILE_DIM + threadIdx.y;
+
+	/* copy calculated transpose to the appropriate area in output array */
+	for (int i = 0; i < TILE_DIM; i += BLOCK_ROWS)
+		AT[(verloc + i) * width + horloc] = tile[threadIdx.x * TILE_DIM + threadIdx.y + i];
+}
+
+__global__
+void simpleTranspose(dtype* AT, dtype* A, int N)  
+{
+	int horloc = blockIdx.x * TILE_DIM + threadIdx.x;
+	int verloc = blockIdx.y * TILE_DIM + threadIdx.y;
+	int width = gridDim.x * TILE_DIM;
+	for (int i = 0; i < TILE_DIM; i+= BLOCK_ROWS)
+		AT[horloc * width + (verloc + i)] = A[(verloc + i)*width + horloc];
 }
 
 __global__
@@ -97,6 +128,7 @@ gpuTranspose (dtype* A, dtype* AT, int N)
 
   void (*kernel)(dtype* , dtype* , int );		// kernel pointer - change the association to determine which kernel to launch
   kernel = &matTrans;
+//  kernel = &simpleTranspose;
 
   #if DEBUG
   printArray(N, A, "input");
