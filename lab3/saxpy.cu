@@ -100,7 +100,7 @@ gpuSaxpy (dtype a, dtype* h_x, dtype* h_y, int N)
 	/* do not change this number */
 	nThreads = 1048576;
 	tbSize = 256;
-	numTB = (nThreads + tbSize - 1) / 256;
+	numTB = (nThreads + tbSize - 1) / tbSize;
 
 	stopwatch_start (timer);
 	// kernel invocation

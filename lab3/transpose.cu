@@ -7,19 +7,23 @@
 /* Let each block work on chunk of data (tile).
    Each tile is of size TILE_DIM * TILE_DIM (number of elements)
    Each block is of size TILE_DIM * BLOCK_ROWS (number of threads in block i
-   Lets keep TILE_DIM equal to warp size (typically 32)
+   Lets keep TILE_DIM equal to what max shared mem cuda allows to allocate
 */
 
-#define TILE_DIM   32	// make sure that matrix is paaded so that it has side multiple of TILE_DIM
-#define BLOCK_ROWS 8
+#define TILE_DIM   48	// make sure that matrix is paaded so that it has side multiple of TILE_DIM
+#define BLOCK_ROWS 4	// each thread processes (TILE_DIM / BLOCK_ROWS) elements
 
 #define DEBUG 0
 
 
 typedef float dtype;
 
-__global__ void matTrans(dtype *AT, dtype *A, int N)
+__global__ 
+void matTrans(dtype *AT, dtype *A, int N)
 {
+	/* We preserve locality of reference by working on tile,
+	   calculate transpose in shared memory,
+	   then copy the transposed tile at its destination */
 	__shared__ float tile[TILE_DIM * TILE_DIM];
 
 	/* Calculate start of tile which is to be transposed */
@@ -31,12 +35,13 @@ __global__ void matTrans(dtype *AT, dtype *A, int N)
 	for (int i = 0; i < TILE_DIM; i += BLOCK_ROWS)
 		tile[(threadIdx.y + i) * TILE_DIM + threadIdx.x] = A[(verloc + i) * width + horloc];
 
-	/* wait for all elements to be processed before over-writing */
-	__syncthreads();
 
 	/* Calculate location of tile where the transposed elements are to be copied */
 	horloc = blockIdx.y * TILE_DIM + threadIdx.x; 
 	verloc = blockIdx.x * TILE_DIM + threadIdx.y;
+
+	/* wait for all elements to be processed before over-writing*/
+	__syncthreads();
 
 	/* copy calculated transpose to the appropriate area in output array */
 	for (int i = 0; i < TILE_DIM; i += BLOCK_ROWS)
