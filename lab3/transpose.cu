@@ -7,10 +7,10 @@
 /* Let each block work on chunk of data (tile).
    Each tile is of size TILE_DIM * TILE_DIM (number of elements)
    Each block is of size TILE_DIM * BLOCK_ROWS (number of threads in block i
-   Lets keep TILE_DIM equal to what max shared mem cuda allows to allocate
+   Lets keep TILE_DIM equal to 48 (see README for notes about this choice.
 */
 
-#define TILE_DIM   48	// make sure that matrix is paaded so that it has side multiple of TILE_DIM
+#define TILE_DIM   48	// make sure that matrix is paded so that it has side multiple of TILE_DIM
 #define BLOCK_ROWS 4	// each thread processes (TILE_DIM / BLOCK_ROWS) elements
 
 #define DEBUG 0
@@ -199,7 +199,7 @@ gpuTranspose (dtype* A, dtype* AT, int N)
   printArray(N, AT, "output");
   #endif
 
-  /* 8. Free the device memory */
+  /* 8. Free the extra host and device memory */
   free(padded_input);
   CUDA_CHECK_ERROR( cudaFree(d_A));
   CUDA_CHECK_ERROR( cudaFree(d_AT));

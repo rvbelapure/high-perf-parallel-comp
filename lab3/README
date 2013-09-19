@@ -36,7 +36,10 @@ Part 2 : Implementing Matrix Transpose
 	 state. Thus, we make sure that we do not have to check for bounds 
 	 (boundary conditions) in GPU kernel and hence it is beneficial to do
 	 padding to the input data set. How to do the padding depends on our
-	 data structures and algorithm used to calculate transpose.
+	 data structures and algorithm used to calculate transpose. We choose
+	 the padding such that the offloaded matrix has its width in multiples
+	 of our tile (explained below) so that we do not have to perform
+	 bounds checking.
 
 	 Our data structure stores a 2-Dimensional matrix in 1-D array. As the
 	 number of elements could be larger than number of threads supported by
