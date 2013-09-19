@@ -1,0 +1,101 @@
+# LAB 1		: CUDA Programming
+# Author 	: Raghavendra Belapure
+# GTID		: 902866342
+-------------------------------------------------------------------------------
+
+Part 1 : Implementing SAXPY function in cuda
+	 The goal is to perform element by element operation y = a * x + y
+	 operation on two equal sized arrays x and y, given constant a.
+	 We have fixed number of threads and arbitrary number of elements.
+	 Thus, each thread will have to work on one or more number of elements.
+	 The strategy for this mapping is as follows.
+	 Consider there are T threads and N elements. So each thread will have
+	 to work on ((N / T) + 1) elements. The kernel is launched with one
+	 dimensional block and grid of threads. As a result, we can consider
+	 this equivalent to mapping an array of size T with array of size N.
+	 If the thread has index 'tid' in the array of size T, then the element
+	 on which it works can be given as
+	 element_index = i * T + tid, where i takes values from 0 to ((N/T)+1)
+	 Since, we are not sure that N will always be some multiple of T, we'll
+	 need to add conditions to make sure that the index calculated does not
+	 exceed N.
+	 Now, with the calculated element_index, we can calculate y = a * x + y
+
+	 With this kernel, we get performance of approx 8 billion keys per sec.
+-------------------------------------------------------------------------------
+
+Part 2 : Implementing Matrix Transpose
+	 The goal in this part is to calculate the transpose of square matrix
+	 of size N. Here, I explain the logical thinking behind why I chose to
+	 take certain decisions.
+
+	 Firstly, we must decide on what should be the size of computation that
+	 should be offloaded to GPU. It is too costly to introduce branching to
+	 check conditions on GPU as the threads in block take different time to
+	 execute different paths, causing the other threads to wait in idle 
+	 state. Thus, we make sure that we do not have to check for bounds 
+	 (boundary conditions) in GPU kernel and hence it is beneficial to do
+	 padding to the input data set. How to do the padding depends on our
+	 data structures and algorithm used to calculate transpose.
+
+	 Our data structure stores a 2-Dimensional matrix in 1-D array. As the
+	 number of elements could be larger than number of threads supported by
+	 the device, we must design to associate more than one element to each
+	 thread. Each block of threads is mapped to a chunk of data in the 2-D
+	 matrix called Tile. This is chosen as a square sub-matrix within the
+	 given larger matrix. We make sure that number of threads in block are
+	 less than number of elements in the corresponding tile, so that the
+	 latency of calculating index for each thread can be hidden behind 
+	 the calculation of transpose of multiple elements by same thread.
+	 In the given setup, we do not need any synchronization between threads
+	 we are calculating the transpose in an array different than the input
+	 array. Thus, each thread can do the work independently.
+	 My initial algorithm was a trivial one where each thread calculates
+	 the index of the elements in input array on which it is going to work
+	 and the corresponding output index in the transposed matrix.
+	 Basically, threads simply calculate assigned i`s and j`s and place
+	 the element (i,j) at location (j,i). This process is independent of
+	 work done by other threads, hence there is inherent parallelism.
+	 This method gave performance of about 8 billion elements per sec.
+
+	 The major flaw with this method is that for each thread, the memory 
+	 location from which it reads data and the location where it writes
+	 the data are fairly distant. Moreover, the adjacent threads in same
+	 block access distant elements. As the elements are far apart in the
+	 given 1-D array, they can not be cached and every thread has to do
+	 a lookup from DRAM, which costs a huge overhead. Thus, it is more
+	 beneficial to access adjacent elements using adjacent threads so that
+	 with only one lookup, multiple elements can be processed. To solve
+	 this problem, we use a temporary location to store the transpose of
+	 the whole tile. A shared memory is used so that all thread in a block
+	 can co-operate together to calculate transpose of that tile. Once the
+	 transpose of the tile is calculated, we copy the whole tile to the 
+	 calculated location in output array so that all such transposed tiles
+	 will stitch together to form transposed matrix. In this method, we 
+	 need to synchronize between threads and have to wait for other threads
+	 to complete the tile-transpose operation before copying it. But the 
+	 delay incurred in waiting for completing execution of few instructions
+	 is much much smaller than looking up each element in tile from DRAM
+	 before every read and write operation. As a result, it is guaranteed
+	 that we'll get better results than the simple transpose method.
+	 
+	 Now, we have to optimize / tune the parameters to get maximum 
+	 performance from this method. We'll need to see the configuration of
+	 GPUs in jinx cluster for this. We query the devices using nvidia-smi
+	 to the jinx cluster, which shows that we have two Tesla M2090 GPUs in
+	 each node. The specifications for it show that it has 128 byte L1
+	 cache and dedicated L2 cache. Size of float is 4 bytes in our GCC 
+	 setup. Thus, theoretically, if we choose the tile of size 32 x 32,
+	 we should get optimal performance as one cache line will be equal to
+	 one row of tile, which is processed by one thread. But since, we need
+	 need to consider overhead of calculating indexes and the fact that the
+	 Tesla M2090 has 1.5 Mb of L2 cache before hitting DRAM, we can get
+	 higher performance by increasing the tile size to exploit L2 cache and
+	 hide latency to calculate index. The optimal point was found at tile
+	 size of 48 x 48 and block size of 48 x 4, so that each thread has
+	 to process 12 elements in the tile.
+
+	 With this algorithm, we get the performance of approx. 12 billion
+	 elements per second.
+
+-------------------------------------------------------------------------------
