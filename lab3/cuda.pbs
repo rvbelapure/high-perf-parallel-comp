@@ -1,7 +1,7 @@
 #PBS -q class
 #PBS -l nodes=1:gpu
-#PBS -l walltime=00:01:00
-#PBS -N gpucuda
+#PBS -l walltime=00:03:00
+#PBS -N cuda
 
 # Changes to the directory we were in when we
 # submit the job:
@@ -19,8 +19,8 @@ echo ""
 echo "=== Running 5 trials of Quicksort on 10 million elements ... ==="
 for trial in 1 2 3 4 5; do
   echo "*** Trial ${trial} ***"
-  ./transpose 1000
-# ./saxpy 10000000
+  ./transpose 4096
+ # ./saxpy 10000000
 done
 
 echo ""
