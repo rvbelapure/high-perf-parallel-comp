@@ -13,7 +13,7 @@ MPICOPTFLAGS = -O2 -g
 MPILDFLAGS =
 
 HOST := $(shell hostname -f)
-ifeq ($(HOST),daffy2)
+ifeq ($(HOST),daffy3)
   MPICFLAGS += -DUSE_MKL
   MKLDIR = /opt/intel/Compiler/11.1/080/Frameworks/mkl/lib/em64t
   MPILDFLAGS += -L$(MKLDIR) -lmkl_intel_lp64 -lmkl_sequential
