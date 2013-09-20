@@ -1,7 +1,7 @@
 /**
  *  \file async.c
  *
- *  \brief Driver file for CSE 6230, Fall 2012, Lab 8:
+ *  \brief Driver file for CSE 6230, Fall 2013, Lab 4:
  *         Asynchronous communication in MPI
  *
  *  \author Rich Vuduc <richie@gatech...>, adapted from Hager and
@@ -110,8 +110,8 @@ main (int argc, char *argv[])
   const int msglen = (1 << 21); /* 2^21 words */
 
   double t_delay = 0; /* Current delay (seconds) */
-  const double delay_step = 0.005; /* Delay step */
-  const double max_delay = 0.2; /* Maximum delay */
+  const double delay_step = 1e-4; /* Delay step */
+  const double max_delay = 100*delay_step; /* Maximum delay */
 
   /* Start MPI */
 #if defined(_OPENMP)
