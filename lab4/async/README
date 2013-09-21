@@ -1,0 +1,77 @@
+# LAB 4		: Asynchronous Communication in MPI
+# Author 	: Raghavendra Belapure
+# GTID		: 902866342
+-------------------------------------------------------------------------------
+
+Ques 1 : Suppose we set t_delay to 0 and observe the return value of this 
+	 function on rank 0. What does the return value tell you?
+
+Answer : If the t_delay variable is set to zero, it implies that the busywait 
+	 function will return without any computation. Thus, the return value
+	 of async_comm_test will consist of only the communication latency
+	 between the two ranks as observed by rank 0.
+
+-------------------------------------------------------------------------------
+
+Ques 2 : Suppose we now gradually increase t_delay. Describe what you would 
+	 expect to happen to the return value on rank 0 if computation and 
+	 communication are not overlapped. What you would instead see if they 
+	 are overlapped?
+
+Answer : Let us consider both cases.
+	 1. Computation and communication are NOT overlapped
+	    This implies that the computation and the communication part of the
+	    micro-benchmark will be serialized by MPI and we will see a linearly
+	    increasing trend in the return value of async_comm_test function as
+	    every time, the returned value would be summation of computation
+	    time and communication latency.
+	    In short, the function can be represented as-
+	    async_comm_test = communication latency + computation delay;
+
+	 2. Computation and communication are overlapped
+	    In this case, we would not see any difference in return value of
+	    async_comm_test function till computation delay is less than or 
+	    equal to the communication latency (as both the tasks are being
+	    executed simultaneously). Thus, initially, the return value would
+	    be equal to the communication latency. If computation delay is more
+	    than the communication latency, then the output will be equal to the
+	    computation delay as communication has already completed before the
+	    computation completes.
+	    In short, the function can be represented as-
+	    async_comm_test = max(communication latency, computation delay);
+
+-------------------------------------------------------------------------------
+
+Ques 3 : Based on your answer to Question 2 and these measured data, is 
+	 computation-communication overlap occurring or not? 
+
+Answer : Yes. The overlap is taking place.
+	 The data in file async-isend.dat and the graph async-isend.png clearly
+	 show that the returned value remains constant till it reaches 0.0025sec
+	 and then increases linearly wrt the delay. In fact, it does exibit the
+	 behavior described in Q2 that the value is maximum of communication
+	 latency and computation delay.
+
+-------------------------------------------------------------------------------
+
+Ques 4 : Using your data and the known message size, estimate the effective 
+	 communication bandwidth. 
+
+Answer : Message size = 8 MiB = 8388608 bytes
+	 Communication delay = 0.0025 sec
+
+	 This number was obtained by observing the data and choosing a point X
+	 such that initially, before point X, the return value is constant for
+	 every reading and starting from point X the function starts returning 
+	 the value equal to computation delay.
+
+	 Thus, communication bandwidth = 8388608 bytes / 0.0025 sec
+	 			       = 3355443200 bytes per sec
+				       = 3276800 kilobytes per sec
+				       = 3200 megabytes per sec
+				       = 3.125 gigabytes per sec
+	
+	(The conversion was done by repetitively dividing each number by 1024)
+
+-------------------------------------------------------------------------------
+
