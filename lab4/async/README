@@ -48,7 +48,7 @@ Ques 3 : Based on your answer to Question 2 and these measured data, is
 Answer : Yes. The overlap is taking place.
 	 The data in file async-isend.dat and the graph async-isend.png clearly
 	 show that the returned value remains constant till it reaches 0.0025sec
-	 and then increases linearly wrt the delay. In fact, it does exibit the
+	 and then increases linearly wrt the delay. In fact, it does exhibit the
 	 behavior described in Q2 that the value is maximum of communication
 	 latency and computation delay.
 
@@ -75,3 +75,21 @@ Answer : Message size = 8 MiB = 8388608 bytes
 
 -------------------------------------------------------------------------------
 
+Ques 5 : Now that OpenMP is enabled, re-run the benchmark. In your README, 
+	 briefly comment on any major differences you observe in the output, 
+	 if any, when compared to the non-OpenMP output.
+
+Answer : Let the earlier experiment be called E1 and the one after enabling
+	 openMP and blocking send be called E2.
+	 Differences observed in output are as follows -
+	 1. In the experimental parameters displayed on stderr,
+	    E1 : OpenMP disabled.
+	    E2 : OpenMP enabled; support level: MPI_THREAD_MULTIPLE
+	 2. In the async.dat file, the communication latency is now increased
+	    to 0.0690 sec from 0.0025 sec.
+	 3. Also, in async.dat file, it can be seen that computation and
+	    communication are now NOT overlapped and the function now returns
+	    values according to rule - 
+	    async_comm_test = communication latency + computation delay;
+
+-------------------------------------------------------------------------------
