@@ -91,5 +91,7 @@ Answer : Let the earlier experiment be called E1 and the one after enabling
 	    communication are now NOT overlapped and the function now returns
 	    values according to rule - 
 	    async_comm_test = communication latency + computation delay;
+	 4. The graph async-blocking-send.png also shows the behavior observed
+	    in point 3 here.
 
 -------------------------------------------------------------------------------
