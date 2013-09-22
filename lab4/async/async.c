@@ -34,11 +34,16 @@ async_comm_test (const double t_delay, const int rank, int* msgbuf, const int le
   const int MSG_TAG = 1000; /* Arbitrary message tag number */
   double t_start = MPI_Wtime ();
   if (rank == 0) {
-    MPI_Request req;
+/*    MPI_Request req;
     MPI_Status stat;
     MPI_Isend (msgbuf, len, MPI_INT, 1, MSG_TAG, MPI_COMM_WORLD, &req);
     busywait (t_delay);
-    MPI_Wait (&req, &stat);
+    MPI_Wait (&req, &stat);*/
+    /* Converting to blocking version of MPI send */
+    #pragma omp task default(none) shared(msgbuf, ompi_mpi_comm_world, ompi_mpi_int)
+    MPI_Send (msgbuf, len, MPI_INT, 1, MSG_TAG, MPI_COMM_WORLD);
+    busywait (t_delay);
+    #pragma omp taskwait
   } else { /* rank == 1 */
     MPI_Status stat;
     MPI_Recv (msgbuf, len, MPI_INT, 0, MSG_TAG, MPI_COMM_WORLD, &stat);
@@ -171,7 +176,9 @@ main (int argc, char *argv[])
     init_message (rank, msgbuf, msglen); /* reset the message */
     test_message (rank, msgbuf, msglen); /* redundant check */
     MPI_Barrier (MPI_COMM_WORLD);
-
+   
+    #pragma omp parallel
+    #pragma omp single nowait
     t_elapsed = async_comm_test (t_delay, rank, msgbuf, msglen);
 
     /* Check that the msgbufs match initial values on rank 0 */
