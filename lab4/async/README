@@ -138,14 +138,14 @@ Answer : The overlapping of MPI_Send and busywait computation was achieved in
 	 the results of the experiment increase linearly with busywait delay
 	 when OpenMP is enabled but not used, and the results remain constant
 	 and equal to communication latency (as it is more than busywait delay)
-	 inspite of variation in busywait delay.
+	 in-spite of variation in busywait delay.
 
 -------------------------------------------------------------------------------
 
 Ques 7 : How does the effective bandwidth of MPI_Send() compare to MPI_Isend() +
 	 MPI_Wait() ?
 
-Answer : We have calculated the the effective bandwidth of MPI_Isend() +
+Answer : We have calculated the effective bandwidth of MPI_Isend() +
 	 MPI_Wait() in Question 4, which is 3.125 gigabytes per sec. Now, we
 	 calculate the effective bandwidth for MPI_Send. As every entry is 
 	 approximately equal to or greater than 0.0690, and our max busywait
