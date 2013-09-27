@@ -46,4 +46,5 @@ Part 2: Compiler Optimizations
 * * *Answer : The average "User Time" before optimization is 5.452 sec.*
 
 * *What is the "User Time" for program execution after you completed **all** three steps and rune the program with `-fprofile-use`*?
-* * *Answer : The average "User Time" after profile guided optimization is 7.106 sec.*
+* * *Answer : The average "User Time" after profile guided optimization is 7.106 sec with GCC
+	and 3.491 sec with ICC optimizations *
