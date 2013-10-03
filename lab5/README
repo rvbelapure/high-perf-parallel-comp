@@ -1,0 +1,87 @@
+# LAB 5         : Profiling - More Compiler Optimizations
+# Author        : Raghavendra Belapure, Karanjit Singh Cheema
+# GTID          : 902866342, 902757702
+# -----------------------------------------------------------------------------
+
+In this part, the goal is to perform any of compiler optimizations except for
+OpenMP to get maximum performance from ImageMagick convert utility.
+
+Following flags have been used for getting the desired performance.
+
+-----------------------------------
+
+1. Compiler Chosen
+
+CC, CXX -
+These define the C-Compiler and C++ Compiler respectively.
+We used 'gcc' as C compiler and 'g++' as C++ compiler.
+
+Various optimization options from different compilers were tried. It was found
+that GCC provides best results among GNU Compiler (GCC), Intel Compiler (ICC)
+and Clang/LLVM compilers.
+
+-----------------------------------
+
+2. Compiler and Linker Options
+
+CFLAGS, CXXFLAGS and LDFLAGS -
+These options define the options given to the C-Compiler, C++ Compiler and
+Linker respectively. All these three variables were assigned exactly same
+values. The options given were -
+
+compiling with profile data generation enabled : -fprofile-generate -O3 -march=corei7
+compiling with profile data use enabled        : -fprofile-use -O3 -march=corei7
+
+Notes :
+(a) The first option is used for profile guided optimization. It allows the compiler to
+    gather profile data from actual execution of the program and perform optimizations
+    using that data afterwards.
+
+(b) The second option, i.e. -O3, enables many optimization related flags. List of flags
+    enabled via -O3 option are as given below -
+
+    -fauto-inc-dec -fcompare-elim -fcprop-registers -fdce -fdefer-pop -fdelayed-branch -fdse 
+    -fguess-branch-probability -fif-conversion2 -fif-conversion -fipa-pure-const -fipa-profile 
+    -fipa-reference -fmerge-constants -fsplit-wide-types -ftree-bit-ccp -ftree-builtin-call-dce 
+    -ftree-ccp -ftree-ch -ftree-copyrename -ftree-dce -ftree-dominator-opts -ftree-dse 
+    -ftree-forwprop -ftree-fre -ftree-phiprop -ftree-slsr -ftree-sra -ftree-pta -ftree-ter 
+    -funit-at-a-time -fomit-frame-pointer -fthread-jumps -falign-functions  -falign-jumps 
+    -falign-loops  -falign-labels -fcaller-saves -fcrossjumping -fcse-follow-jumps 
+    -fcse-skip-blocks -fdelete-null-pointer-checks -fdevirtualize -fexpensive-optimizations 
+    -fgcse  -fgcse-lm  -fhoist-adjacent-loads -finline-small-functions -findirect-inlining 
+    -fipa-sra -foptimize-sibling-calls -fpartial-inlining -fpeephole2 -fregmove -freorder-blocks  
+    -freorder-functions -frerun-cse-after-loop -fsched-interblock  -fsched-spec -fschedule-insns 
+    -fschedule-insns2 -fstrict-aliasing -fstrict-overflow -ftree-switch-conversion -ftree-tail-merge
+    -ftree-pre -ftree-vrp -finline-functions -funswitch-loops -fpredictive-commoning 
+    -fgcse-after-reload -ftree-vectorize -fvect-cost-model -ftree-partial-pre
+
+(c) As -O3 enables most of the options, we do not need any other additional options other than
+    architecture specific code generation and performance tuning for that architecture. As jinx
+    cluster has all Intel Xeon CPUs with Nehalem architecture, which is same as Core-i7 CPUs,
+    we specify the target architecture as corei7 via -march=corei7 option.
+    This enables many architecture specific options such as SSE1-SSE4.2, MMX etc.
+
+
+(d) Various other optimizations were also tried such as link-time-optimizations (-flto) supported
+    by GCC and equivalent interprocedural optimizations (-ipo) supported by icc. Optimizations
+    such as store motion (-fgcse-sm) and global common subexpression elimination (-fgcse-las) were
+    also tried, but they caused the latency of the program to increase. Performance of -O2 was 
+    also compared with -O3.
+    Other aggressive levels of optimizations such as -Ofast (which actually enable -ffast-math 
+    over -O3) resulted in incorrect program execution. Similar optimizations were performed with
+    icc and clang compilers as well. But as gcc provided better result, it was chosen as compiler
+    of choice.
+
+-----------------------------------
+
+3. Performance Target (less than 3.2 sec)
+
+The convert application was executed 50 times with the given input with blurr operation.
+Each run was timed using UNIX 'time' tool and the elapsed 'user time' was noted.
+
+Summary of measured performance :
+Maximum user time recorded = 3.217 sec
+Minimum user time recorded = 3.149 sec
+Average user time recorded = 3.183 sec
+
+----------------------------------
