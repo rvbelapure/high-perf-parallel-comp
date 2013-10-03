@@ -225,6 +225,35 @@ mmShared8 (dtype* A, dtype* B, dtype* C, unsigned int N)
 	cudaThreadSynchronize ();
 }
 
+__global__
+void
+mmMyOwnKernel (dtype* A, dtype* B, dtype* C, unsigned int N)
+{
+	/* insert your code here */
+}
+void
+mmMyOwn (dtype* A, dtype* B, dtype* C, unsigned int N)
+{
+	unsigned int nBlocks;
+
+
+	nBlocks = (N + BLOCK_SIZE - 1) / BLOCK_SIZE;
+
+	dim3 grid (nBlocks, nBlocks);	
+	dim3 block (BLOCK_SIZE, BLOCK_SIZE / 8);	
+
+	mmMyOwnKernel <<<grid, block>>> (A, B, C, N);
+	cudaThreadSynchronize ();
+	mmMyOwnKernel <<<grid, block>>> (A, B, C, N);
+	cudaThreadSynchronize ();
+	mmMyOwnKernel <<<grid, block>>> (A, B, C, N);
+	cudaThreadSynchronize ();
+	mmMyOwnKernel <<<grid, block>>> (A, B, C, N);
+	cudaThreadSynchronize ();
+	mmMyOwnKernel <<<grid, block>>> (A, B, C, N);
+	cudaThreadSynchronize ();
+}
+
 
 
 
@@ -238,7 +267,7 @@ cudaMM (dtype *A, dtype* B, dtype* C, unsigned int N, unsigned int OPT, dtype* h
 	CUDA_CHECK_ERROR (cudaEventCreate (&stop));
 
 	fprintf (stderr, "Executing test case [%d]\n", OPT);
-	fprintf (stderr, "[1]: Naive | [2]: shared memory| [3]: SM 2 per thread | [4]: SM 4 per thread | [5]: SM 8 per thread | \n");
+	fprintf (stderr, "[1]: Naive | [2]: shared memory| [3]: SM 2 per thread | [4]: SM 4 per thread | [5]: SM 8 per thread | [6]: my own implementation \n");
 
 	
 	CUDA_CHECK_ERROR (cudaEventRecord (start, 0));
@@ -258,6 +287,9 @@ cudaMM (dtype *A, dtype* B, dtype* C, unsigned int N, unsigned int OPT, dtype* h
 			break;
 		case 5:
 			mmShared8 (A, B, C, N);	
+			break;
+		case 6:
+			mmMyOwn (A, B, C, N);
 			break;
 		default:
 			mmNaive (A, B, C, N);	
