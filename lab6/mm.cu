@@ -140,6 +140,62 @@ void
 mmShared2Kernel (dtype* A, dtype* B, dtype* C, unsigned int N)
 {
 	/* insert your code here */
+	/* block indices */
+	int bidx = blockIdx.x;
+	int bidy = blockIdx.y;
+
+	/* thread indices */
+	int tidx = threadIdx.x;
+	int tidy = threadIdx.y;
+
+	/* row  index of first sub-block of matrix A processed by this thread block */
+	int aStart = N * (BLOCK_SIZE * bidy);
+	/* row  index of last sub-block of matrix A processed by this thread block */
+	int aEnd   = aStart + N - 1;
+	/* increment size for sub-block of matrix A */
+	int aInc = BLOCK_SIZE;
+
+	/* col index of first sub-blcok of matrx B processed by this thread block */
+	int bStart = BLOCK_SIZE * bidx;
+	/* last sub block is not needed since it'll have 1-on-1 match to A */
+	/* increment size for sub-block of matrix B */
+	int bInc = BLOCK_SIZE * N;
+
+	/* temporary variable for accummulating the partial results */
+	float cSub1 = 0, cSub2 = 0;
+
+	/* Loop over the sub-matrices of A and B */
+	for (int a = aStart, b = bStart; a <= aEnd; a += aInc, b += bInc) {
+		/* declaration of shared memory for storing sub-block of A */
+		__shared__ float As[BLOCK_SIZE][BLOCK_SIZE];
+
+		/* declaration of shared memory for storing sub-block of B */
+		__shared__ float Bs[BLOCK_SIZE][BLOCK_SIZE];
+
+		/* load the matrices from memory to shared memory */
+		As[tidy][tidx] = A[a + N * tidy + tidx];
+		Bs[tidy][tidx] = B[b + N * tidy + tidx];
+		As[tidy + BLOCK_SIZE/2][tidx] = A[a + N * (tidy+BLOCK_SIZE/2) + tidx];
+		Bs[tidy + BLOCK_SIZE/2][tidx] = B[b + N * (tidy+BLOCK_SIZE/2) + tidx];
+		__syncthreads();
+
+		/* multiply the two matrices together */
+		/* one thread per element of C */
+#pragma unroll
+		for (int k = 0; k < BLOCK_SIZE; ++k)
+		{
+			cSub1 += As[tidy][k] * Bs[k][tidx];
+			cSub2 += As[tidy+BLOCK_SIZE/2][k] * Bs[k][tidx];
+		}
+
+		/* synchornize before loading next sub-blocks */
+		__syncthreads();
+	}
+
+	/* write back the results */
+	int c = N * BLOCK_SIZE * bidy + BLOCK_SIZE * bidx;
+	C[c + N * tidy + tidx] = cSub1;
+	C[c + N * (tidy + BLOCK_SIZE/2) + tidx] = cSub2;
 }
 void
 mmShared2 (dtype* A, dtype* B, dtype* C, unsigned int N)
@@ -170,6 +226,75 @@ void
 mmShared4Kernel (dtype* A, dtype* B, dtype* C, unsigned int N)
 {
 	/* insert your code here */
+	/* block indices */
+	int bidx = blockIdx.x;
+	int bidy = blockIdx.y;
+
+	/* thread indices */
+	int tidx = threadIdx.x;
+	int tidy = threadIdx.y;
+
+	/* row  index of first sub-block of matrix A processed by this thread block */
+	int aStart = N * (BLOCK_SIZE * bidy);
+	/* row  index of last sub-block of matrix A processed by this thread block */
+	int aEnd   = aStart + N - 1;
+	/* increment size for sub-block of matrix A */
+	int aInc = BLOCK_SIZE;
+
+	/* col index of first sub-blcok of matrx B processed by this thread block */
+	int bStart = BLOCK_SIZE * bidx;
+	/* last sub block is not needed since it'll have 1-on-1 match to A */
+	/* increment size for sub-block of matrix B */
+	int bInc = BLOCK_SIZE * N;
+
+	/* temporary variable for accummulating the partial results */
+	float cSub1 = 0, cSub2 = 0, cSub3 = 0, cSub4 = 0;
+
+	/* Loop over the sub-matrices of A and B */
+	for (int a = aStart, b = bStart; a <= aEnd; a += aInc, b += bInc) {
+		/* declaration of shared memory for storing sub-block of A */
+		__shared__ float As[BLOCK_SIZE][BLOCK_SIZE];
+
+		/* declaration of shared memory for storing sub-block of B */
+		__shared__ float Bs[BLOCK_SIZE][BLOCK_SIZE];
+
+		/* load the matrices from memory to shared memory */
+		As[tidy][tidx] = A[a + N * tidy + tidx];
+		Bs[tidy][tidx] = B[b + N * tidy + tidx];
+
+		As[tidy + BLOCK_SIZE/4][tidx] = A[a + N * (tidy+BLOCK_SIZE/4) + tidx];
+		Bs[tidy + BLOCK_SIZE/4][tidx] = B[b + N * (tidy+BLOCK_SIZE/4) + tidx];
+
+		As[tidy + BLOCK_SIZE/2][tidx] = A[a + N * (tidy+BLOCK_SIZE/2) + tidx];
+		Bs[tidy + BLOCK_SIZE/2][tidx] = B[b + N * (tidy+BLOCK_SIZE/2) + tidx];
+
+		As[tidy + 3*BLOCK_SIZE/4][tidx] = A[a + N * (tidy+3*BLOCK_SIZE/4) + tidx];
+		Bs[tidy + 3*BLOCK_SIZE/4][tidx] = B[b + N * (tidy+ 3*BLOCK_SIZE/4) + tidx];
+
+		__syncthreads();
+
+		/* multiply the two matrices together */
+		/* one thread per element of C */
+#pragma unroll
+		for (int k = 0; k < BLOCK_SIZE; ++k)
+		{
+			cSub1 += As[tidy][k] * Bs[k][tidx];
+			cSub2 += As[tidy+BLOCK_SIZE/4][k] * Bs[k][tidx];
+			cSub3 += As[tidy+BLOCK_SIZE/2][k] * Bs[k][tidx];
+			cSub4 += As[tidy+3*BLOCK_SIZE/4][k] * Bs[k][tidx];
+		}
+
+		/* synchornize before loading next sub-blocks */
+		__syncthreads();
+	}
+
+	/* write back the results */
+	int c = N * BLOCK_SIZE * bidy + BLOCK_SIZE * bidx;
+	C[c + N * tidy + tidx] = cSub1;
+	C[c + N * (tidy + BLOCK_SIZE/4) + tidx] = cSub2;
+	C[c + N * (tidy + BLOCK_SIZE/2) + tidx] = cSub3;
+	C[c + N * (tidy + 3*BLOCK_SIZE/4) + tidx] = cSub4;
+
 }
 void
 mmShared4 (dtype* A, dtype* B, dtype* C, unsigned int N)
@@ -201,6 +326,95 @@ void
 mmShared8Kernel (dtype* A, dtype* B, dtype* C, unsigned int N)
 {
 	/* insert your code here */
+	/* block indices */
+	int bidx = blockIdx.x;
+	int bidy = blockIdx.y;
+
+	/* thread indices */
+	int tidx = threadIdx.x;
+	int tidy = threadIdx.y;
+
+	/* row  index of first sub-block of matrix A processed by this thread block */
+	int aStart = N * (BLOCK_SIZE * bidy);
+	/* row  index of last sub-block of matrix A processed by this thread block */
+	int aEnd   = aStart + N - 1;
+	/* increment size for sub-block of matrix A */
+	int aInc = BLOCK_SIZE;
+
+	/* col index of first sub-blcok of matrx B processed by this thread block */
+	int bStart = BLOCK_SIZE * bidx;
+	/* last sub block is not needed since it'll have 1-on-1 match to A */
+	/* increment size for sub-block of matrix B */
+	int bInc = BLOCK_SIZE * N;
+
+	/* temporary variable for accummulating the partial results */
+	float cSub1 = 0, cSub2 = 0, cSub3 = 0, cSub4 = 0, cSub5 = 0, cSub6 = 0, cSub7 = 0, cSub8 = 0;
+
+	/* Loop over the sub-matrices of A and B */
+	for (int a = aStart, b = bStart; a <= aEnd; a += aInc, b += bInc) {
+		/* declaration of shared memory for storing sub-block of A */
+		__shared__ float As[BLOCK_SIZE][BLOCK_SIZE];
+
+		/* declaration of shared memory for storing sub-block of B */
+		__shared__ float Bs[BLOCK_SIZE][BLOCK_SIZE];
+
+		/* load the matrices from memory to shared memory */
+		As[tidy][tidx] = A[a + N * tidy + tidx];
+		Bs[tidy][tidx] = B[b + N * tidy + tidx];
+
+		As[tidy + BLOCK_SIZE/8][tidx] = A[a + N * (tidy+BLOCK_SIZE/8) + tidx];
+		Bs[tidy + BLOCK_SIZE/8][tidx] = B[b + N * (tidy+BLOCK_SIZE/8) + tidx];
+
+		As[tidy + 2*BLOCK_SIZE/8][tidx] = A[a + N * (tidy+2*BLOCK_SIZE/8) + tidx];
+		Bs[tidy + 2*BLOCK_SIZE/8][tidx] = B[b + N * (tidy+2*BLOCK_SIZE/8) + tidx];
+
+		As[tidy + 3*BLOCK_SIZE/8][tidx] = A[a + N * (tidy+ 3*BLOCK_SIZE/8) + tidx];
+		Bs[tidy + 3*BLOCK_SIZE/8][tidx] = B[b + N * (tidy+ 3*BLOCK_SIZE/8) + tidx];
+
+		As[tidy + 4*BLOCK_SIZE/8][tidx] = A[a + N * (tidy+ 4*BLOCK_SIZE/8) + tidx];
+		Bs[tidy + 4*BLOCK_SIZE/8][tidx] = B[b + N * (tidy+ 4*BLOCK_SIZE/8) + tidx];
+
+		As[tidy + 5*BLOCK_SIZE/8][tidx] = A[a + N * (tidy+ 5*BLOCK_SIZE/8) + tidx];
+		Bs[tidy + 5*BLOCK_SIZE/8][tidx] = B[b + N * (tidy+ 5*BLOCK_SIZE/8) + tidx];
+
+		As[tidy + 6*BLOCK_SIZE/8][tidx] = A[a + N * (tidy+ 6*BLOCK_SIZE/8) + tidx];
+		Bs[tidy + 6*BLOCK_SIZE/8][tidx] = B[b + N * (tidy+ 6*BLOCK_SIZE/8) + tidx];
+
+		As[tidy + 7*BLOCK_SIZE/8][tidx] = A[a + N * (tidy+ 7*BLOCK_SIZE/8) + tidx];
+		Bs[tidy + 7*BLOCK_SIZE/8][tidx] = B[b + N * (tidy+ 7*BLOCK_SIZE/8) + tidx];
+
+		__syncthreads();
+
+		/* multiply the two matrices together */
+		/* one thread per element of C */
+#pragma unroll
+		for (int k = 0; k < BLOCK_SIZE; ++k)
+		{
+			cSub1 += As[tidy][k] * Bs[k][tidx];
+			cSub2 += As[tidy+BLOCK_SIZE/8][k] * Bs[k][tidx];
+			cSub3 += As[tidy+2*BLOCK_SIZE/8][k] * Bs[k][tidx];
+			cSub4 += As[tidy+3*BLOCK_SIZE/8][k] * Bs[k][tidx];
+			cSub5 += As[tidy+4*BLOCK_SIZE/8][k] * Bs[k][tidx];
+			cSub6 += As[tidy+5*BLOCK_SIZE/8][k] * Bs[k][tidx];
+			cSub7 += As[tidy+6*BLOCK_SIZE/8][k] * Bs[k][tidx];
+			cSub8 += As[tidy+7*BLOCK_SIZE/8][k] * Bs[k][tidx];
+		}
+
+		/* synchornize before loading next sub-blocks */
+		__syncthreads();
+	}
+
+	/* write back the results */
+	int c = N * BLOCK_SIZE * bidy + BLOCK_SIZE * bidx;
+	C[c + N * tidy + tidx] = cSub1;
+	C[c + N * (tidy + BLOCK_SIZE/8) + tidx] = cSub2;
+	C[c + N * (tidy + 2*BLOCK_SIZE/8) + tidx] = cSub3;
+	C[c + N * (tidy + 3*BLOCK_SIZE/8) + tidx] = cSub4;
+	C[c + N * (tidy + 4*BLOCK_SIZE/8) + tidx] = cSub5;
+	C[c + N * (tidy + 5*BLOCK_SIZE/8) + tidx] = cSub6;
+	C[c + N * (tidy + 6*BLOCK_SIZE/8) + tidx] = cSub7;
+	C[c + N * (tidy + 7*BLOCK_SIZE/8) + tidx] = cSub8;
+
 }
 void
 mmShared8 (dtype* A, dtype* B, dtype* C, unsigned int N)
