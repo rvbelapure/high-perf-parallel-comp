@@ -49,9 +49,9 @@ reduceNaiveKernel (dtype* In, dtype *Out, unsigned int N)
 dtype
 reduceNaive (dtype* d_In, dtype* d_Out, dtype* h_Out, unsigned int N)
 {
-	unsigned int nThreads, tbSize, nBlocks;
+	unsigned int i, nThreads, tbSize, nBlocks;
 	dtype ans;
-
+	
 
 	nThreads = N;
 	tbSize = BS;
@@ -60,16 +60,10 @@ reduceNaive (dtype* d_In, dtype* d_Out, dtype* h_Out, unsigned int N)
 	dim3 grid (nBlocks);
 	dim3 block (tbSize);
 
-	reduceNaiveKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
-	reduceNaiveKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
-	reduceNaiveKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
-	reduceNaiveKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
-	reduceNaiveKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
+	for(i = 0; i < NUM_ITER; i++) {
+		reduceNaiveKernel <<<grid, block>>> (d_In, d_Out, N);
+		cudaThreadSynchronize ();
+	}
 
 	CUDA_CHECK_ERROR (cudaMemcpy (h_Out, d_Out, nBlocks * sizeof (dtype),
 																cudaMemcpyDeviceToHost));
@@ -83,33 +77,7 @@ reduceNaive (dtype* d_In, dtype* d_Out, dtype* h_Out, unsigned int N)
 __global__ void 
 reduceNonDivergeKernel (dtype* In, dtype *Out, unsigned int N)
 {
-	__shared__ dtype buffer[BS];
-	unsigned int tid = blockIdx.x * blockDim.x + threadIdx.x;
-	unsigned int stride;
-	unsigned int index;
-	
-
-	/* load data to buffer */
-	if(tid < N) {
-		buffer[threadIdx.x] = In[tid];
-	} else {
-		buffer[threadIdx.x] = (dtype) 0.0;
-	}
-	__syncthreads ();
-
-	/* reduce in shared memory */
-	for(stride = 1; stride < blockDim.x; stride *= 2) {
-		index = threadIdx.x * 2 * stride;
-		if(index < blockDim.x) {
-			buffer[index] += buffer[index + stride];
-		}
-		__syncthreads ();
-	}
-
-	/* store back the reduced result */
-	if(threadIdx.x == 0) {
-		Out[blockIdx.x] = buffer[0];
-	}
+	/* Fill in your code here */
 }
 
 
@@ -117,7 +85,7 @@ reduceNonDivergeKernel (dtype* In, dtype *Out, unsigned int N)
 dtype
 reduceNonDiverge (dtype* d_In, dtype* d_Out, dtype* h_Out, unsigned int N)
 {
-	unsigned int nThreads, tbSize, nBlocks;
+	unsigned int i, nThreads, tbSize, nBlocks;
 	dtype ans;
 
 
@@ -128,16 +96,10 @@ reduceNonDiverge (dtype* d_In, dtype* d_Out, dtype* h_Out, unsigned int N)
 	dim3 grid (nBlocks);
 	dim3 block (tbSize);
 
-	reduceNonDivergeKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
-	reduceNonDivergeKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
-	reduceNonDivergeKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
-	reduceNonDivergeKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
-	reduceNonDivergeKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
+	for(i = 0; i < NUM_ITER; i++) {
+		reduceNonDivergeKernel <<<grid, block>>> (d_In, d_Out, N);
+		cudaThreadSynchronize ();
+	}
 
 	CUDA_CHECK_ERROR (cudaMemcpy (h_Out, d_Out, nBlocks * sizeof (dtype),
 																cudaMemcpyDeviceToHost));
@@ -151,31 +113,7 @@ reduceNonDiverge (dtype* d_In, dtype* d_Out, dtype* h_Out, unsigned int N)
 __global__ void 
 reduceSeqAddKernel (dtype* In, dtype *Out, unsigned int N)
 {
-	__shared__ dtype buffer[BS];
-	unsigned int tid = blockIdx.x * blockDim.x + threadIdx.x;
-	unsigned int stride;
-	
-
-	/* load data to buffer */
-	if(tid < N) {
-		buffer[threadIdx.x] = In[tid];
-	} else {
-		buffer[threadIdx.x] = (dtype) 0.0;
-	}
-	__syncthreads ();
-
-	/* reduce in shared memory */
-	for(stride = blockDim.x / 2; stride > 0; stride >>= 1) {
-		if(threadIdx.x < stride) {
-			buffer[threadIdx.x] += buffer[threadIdx.x + stride];
-		}
-		__syncthreads ();
-	}
-
-	/* store back the reduced result */
-	if(threadIdx.x == 0) {
-		Out[blockIdx.x] = buffer[0];
-	}
+	/* Fill in your code here */
 }
 
 
@@ -183,7 +121,7 @@ reduceSeqAddKernel (dtype* In, dtype *Out, unsigned int N)
 dtype
 reduceSeqAdd (dtype* d_In, dtype* d_Out, dtype* h_Out, unsigned int N)
 {
-	unsigned int nThreads, tbSize, nBlocks;
+	unsigned int i, nThreads, tbSize, nBlocks;
 	dtype ans;
 
 
@@ -194,16 +132,10 @@ reduceSeqAdd (dtype* d_In, dtype* d_Out, dtype* h_Out, unsigned int N)
 	dim3 grid (nBlocks);
 	dim3 block (tbSize);
 
-	reduceSeqAddKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
-	reduceSeqAddKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
-	reduceSeqAddKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
-	reduceSeqAddKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
-	reduceSeqAddKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
+	for(i = 0; i < NUM_ITER; i++) {
+		reduceSeqAddKernel <<<grid, block>>> (d_In, d_Out, N);
+		cudaThreadSynchronize ();
+	}
 
 	CUDA_CHECK_ERROR (cudaMemcpy (h_Out, d_Out, nBlocks * sizeof (dtype),
 																cudaMemcpyDeviceToHost));
@@ -217,32 +149,7 @@ reduceSeqAdd (dtype* d_In, dtype* d_Out, dtype* h_Out, unsigned int N)
 __global__ void 
 reduceFirstAddKernel (dtype* In, dtype *Out, unsigned int N)
 {
-	__shared__ dtype buffer[BS];
-	unsigned int tid = blockIdx.x * 2 * blockDim.x + threadIdx.x;
-	unsigned int stride;
-	dtype tmp;
-	
-
-	/* load data to buffer */
-	tmp = In[tid];	
-	if(tid + blockDim.x < N) {
-		tmp += In[tid + blockDim.x];
-	}
-	buffer[threadIdx.x] = tmp;
-	__syncthreads ();
-
-	/* reduce in shared memory */
-	for(stride = blockDim.x / 2; stride > 0; stride >>= 1) {
-		if(threadIdx.x < stride) {
-			buffer[threadIdx.x] += buffer[threadIdx.x + stride];
-		}
-		__syncthreads ();
-	}
-
-	/* store back the reduced result */
-	if(threadIdx.x == 0) {
-		Out[blockIdx.x] = buffer[0];
-	}
+	/* Fill in your code here */
 }
 
 
@@ -250,7 +157,7 @@ reduceFirstAddKernel (dtype* In, dtype *Out, unsigned int N)
 dtype
 reduceFirstAdd (dtype* d_In, dtype* d_Out, dtype* h_Out, unsigned int N)
 {
-	unsigned int nThreads, tbSize, nBlocks;
+	unsigned int i, nThreads, tbSize, nBlocks;
 	dtype ans;
 
 
@@ -261,16 +168,10 @@ reduceFirstAdd (dtype* d_In, dtype* d_Out, dtype* h_Out, unsigned int N)
 	dim3 grid (nBlocks);
 	dim3 block (tbSize);
 
-	reduceFirstAddKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
-	reduceFirstAddKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
-	reduceFirstAddKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
-	reduceFirstAddKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
-	reduceFirstAddKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
+	for(i = 0; i < NUM_ITER; i++) {
+		reduceFirstAddKernel <<<grid, block>>> (d_In, d_Out, N);
+		cudaThreadSynchronize ();
+	}
 
 	CUDA_CHECK_ERROR (cudaMemcpy (h_Out, d_Out, nBlocks * sizeof (dtype),
 																cudaMemcpyDeviceToHost));
@@ -284,42 +185,7 @@ reduceFirstAdd (dtype* d_In, dtype* d_Out, dtype* h_Out, unsigned int N)
 __global__ void 
 reduceUnrollLastKernel (dtype* In, dtype *Out, unsigned int N)
 {
-	__shared__ dtype buffer[BS];
-	unsigned int tid = blockIdx.x * (blockDim.x * 2) + threadIdx.x;
-	unsigned int stride;
-	dtype tmp;
-	
-
-	/* load data to buffer */
-	tmp = In[tid];	
-	if(tid + blockDim.x < N) {
-		tmp += In[tid + blockDim.x];
-	}
-	buffer[threadIdx.x] = tmp;
-	__syncthreads ();
-
-	/* reduce in shared memory */
-	for(stride = blockDim.x / 2; stride > 32; stride >>= 1) {
-		if(threadIdx.x < stride) {
-			buffer[threadIdx.x] += buffer[threadIdx.x + stride];
-		}
-		__syncthreads ();
-	}
-	/* warp is unrolled */
-	if(threadIdx.x < 32) {
-		volatile dtype *sm = buffer;
-		sm[threadIdx.x] += sm[threadIdx.x + 32];
-		sm[threadIdx.x] += sm[threadIdx.x + 16];
-		sm[threadIdx.x] += sm[threadIdx.x + 8];
-		sm[threadIdx.x] += sm[threadIdx.x + 4];
-		sm[threadIdx.x] += sm[threadIdx.x + 2];
-		sm[threadIdx.x] += sm[threadIdx.x + 1];
-	}
-
-	/* store back the reduced result */
-	if(threadIdx.x == 0) {
-		Out[blockIdx.x] = buffer[0];
-	}
+	/* Fill in your code here */
 }
 
 
@@ -327,7 +193,7 @@ reduceUnrollLastKernel (dtype* In, dtype *Out, unsigned int N)
 dtype
 reduceUnrollLast (dtype* d_In, dtype* d_Out, dtype* h_Out, unsigned int N)
 {
-	unsigned int nThreads, tbSize, nBlocks;
+	unsigned int i, nThreads, tbSize, nBlocks;
 	dtype ans;
 
 
@@ -338,16 +204,10 @@ reduceUnrollLast (dtype* d_In, dtype* d_Out, dtype* h_Out, unsigned int N)
 	dim3 grid (nBlocks);
 	dim3 block (tbSize);
 
-	reduceUnrollLastKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
-	reduceUnrollLastKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
-	reduceUnrollLastKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
-	reduceUnrollLastKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
-	reduceUnrollLastKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
+	for(i = 0; i < NUM_ITER; i++) {
+		reduceUnrollLastKernel <<<grid, block>>> (d_In, d_Out, N);
+		cudaThreadSynchronize ();
+	}
 
 	CUDA_CHECK_ERROR (cudaMemcpy (h_Out, d_Out, nBlocks * sizeof (dtype),
 																cudaMemcpyDeviceToHost));
@@ -362,60 +222,7 @@ reduceUnrollLast (dtype* d_In, dtype* d_Out, dtype* h_Out, unsigned int N)
 __global__ void 
 reduceUnrollAllKernel (dtype* In, dtype *Out, unsigned int N)
 {
-	__shared__ dtype buffer[BS];
-	unsigned int tid = blockIdx.x * (blockDim.x * 2) + threadIdx.x;
-	dtype tmp;
-	
-
-	/* load data to buffer */
-	tmp = In[tid];	
-	if(tid + blockDim.x < N) {
-		tmp += In[tid + blockDim.x];
-	}
-	buffer[threadIdx.x] = tmp;
-	__syncthreads ();
-
-	/* reduce in shared memory */
-	if(BS >= 1024) {
-		if(threadIdx.x < 512) {
-			buffer[threadIdx.x] += buffer[threadIdx.x + 512];
-			__syncthreads ();
-		}
-	}	
-	if(BS >= 512) {
-		if(threadIdx.x < 256) {
-			buffer[threadIdx.x] += buffer[threadIdx.x + 256];
-			__syncthreads ();
-		}
-	}	
-	if(BS >= 256) {
-		if(threadIdx.x < 128) {
-			buffer[threadIdx.x] += buffer[threadIdx.x + 128];
-			__syncthreads ();
-		}
-	}	
-	if(BS >= 128) {
-		if(threadIdx.x < 64) {
-			buffer[threadIdx.x] += buffer[threadIdx.x + 64];
-			__syncthreads ();
-		}
-	}	
-
-	/* warp is unrolled */
-	if(threadIdx.x < 32) {
-		volatile dtype *sm = buffer;
-		sm[threadIdx.x] += sm[threadIdx.x + 32];
-		sm[threadIdx.x] += sm[threadIdx.x + 16];
-		sm[threadIdx.x] += sm[threadIdx.x + 8];
-		sm[threadIdx.x] += sm[threadIdx.x + 4];
-		sm[threadIdx.x] += sm[threadIdx.x + 2];
-		sm[threadIdx.x] += sm[threadIdx.x + 1];
-	}
-
-	/* store back the reduced result */
-	if(threadIdx.x == 0) {
-		Out[blockIdx.x] = buffer[0];
-	}
+	/* Fill in your code here */
 }
 
 
@@ -423,7 +230,7 @@ reduceUnrollAllKernel (dtype* In, dtype *Out, unsigned int N)
 dtype
 reduceUnrollAll (dtype* d_In, dtype* d_Out, dtype* h_Out, unsigned int N)
 {
-	unsigned int nThreads, tbSize, nBlocks;
+	unsigned int i, nThreads, tbSize, nBlocks;
 	dtype ans;
 
 
@@ -434,16 +241,10 @@ reduceUnrollAll (dtype* d_In, dtype* d_Out, dtype* h_Out, unsigned int N)
 	dim3 grid (nBlocks);
 	dim3 block (tbSize);
 
-	reduceUnrollAllKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
-	reduceUnrollAllKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
-	reduceUnrollAllKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
-	reduceUnrollAllKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
-	reduceUnrollAllKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
+	for(i = 0; i < NUM_ITER; i++) {
+		reduceUnrollAllKernel <<<grid, block>>> (d_In, d_Out, N);
+		cudaThreadSynchronize ();
+	}
 
 	CUDA_CHECK_ERROR (cudaMemcpy (h_Out, d_Out, nBlocks * sizeof (dtype),
 																cudaMemcpyDeviceToHost));
@@ -459,63 +260,7 @@ reduceUnrollAll (dtype* d_In, dtype* d_Out, dtype* h_Out, unsigned int N)
 __global__ void 
 reduceMultAddKernel (dtype* In, dtype *Out, unsigned int N)
 {
-	__shared__ dtype buffer[BS];
-	unsigned int tid = blockIdx.x * (blockDim.x * 2) + threadIdx.x;
-	dtype tmp;
-
-	/* load data to buffer */
-	tmp = 0.0;
-	while(tid < N) {
-		tmp += In[tid];
-		if((tid + blockDim.x) < N) {
-			tmp += In[tid + blockDim.x];
-		}
-		tid += blockDim.x * 2 * gridDim.x;
-	}
-	buffer[threadIdx.x] = tmp;
-	__syncthreads ();
-
-	/* reduce in shared memory */
-	if(BS >= 1024) {
-		if(threadIdx.x < 512) {
-			buffer[threadIdx.x] += buffer[threadIdx.x + 512];
-			__syncthreads ();
-		}
-	}	
-	if(BS >= 512) {
-		if(threadIdx.x < 256) {
-			buffer[threadIdx.x] += buffer[threadIdx.x + 256];
-			__syncthreads ();
-		}
-	}	
-	if(BS >= 256) {
-		if(threadIdx.x < 128) {
-			buffer[threadIdx.x] += buffer[threadIdx.x + 128];
-			__syncthreads ();
-		}
-	}	
-	if(BS >= 128) {
-		if(threadIdx.x < 64) {
-			buffer[threadIdx.x] += buffer[threadIdx.x + 64];
-			__syncthreads ();
-		}
-	}	
-
-	/* warp is unrolled */
-	if(threadIdx.x < 32) {
-		volatile dtype *sm = buffer;
-		sm[threadIdx.x] += sm[threadIdx.x + 32];
-		sm[threadIdx.x] += sm[threadIdx.x + 16];
-		sm[threadIdx.x] += sm[threadIdx.x + 8];
-		sm[threadIdx.x] += sm[threadIdx.x + 4];
-		sm[threadIdx.x] += sm[threadIdx.x + 2];
-		sm[threadIdx.x] += sm[threadIdx.x + 1];
-	}
-
-	/* store back the reduced result */
-	if(threadIdx.x == 0) {
-		Out[blockIdx.x] = buffer[0];
-	}
+	/* Fill in your code here */
 }
 
 
@@ -523,28 +268,21 @@ reduceMultAddKernel (dtype* In, dtype *Out, unsigned int N)
 dtype
 reduceMultAdd (dtype* d_In, dtype* d_Out, dtype* h_Out, unsigned int N)
 {
-	unsigned int nThreads, tbSize, nBlocks;
+	unsigned int i, nThreads, tbSize, nBlocks;
 	dtype ans;
 
 
-	// nThreads = (N + 1) / 32;
-	nThreads = 16384;
+	nThreads = (N + 1) / 32;
 	tbSize = BS;
 	nBlocks = (nThreads + tbSize - 1) / tbSize;
 
 	dim3 grid (nBlocks);
 	dim3 block (tbSize);
 
-	reduceMultAddKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
-	reduceMultAddKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
-	reduceMultAddKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
-	reduceMultAddKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
-	reduceMultAddKernel <<<grid, block>>> (d_In, d_Out, N);
-	cudaThreadSynchronize ();
+	for(i = 0; i < NUM_ITER; i++) {
+		reduceMultAddKernel <<<grid, block>>> (d_In, d_Out, N);
+		cudaThreadSynchronize ();
+	}
 
 	CUDA_CHECK_ERROR (cudaMemcpy (h_Out, d_Out, nBlocks * sizeof (dtype),
 																cudaMemcpyDeviceToHost));
@@ -619,7 +357,7 @@ cudaReduction (dtype *A, unsigned int N, unsigned int OPT, dtype *ret)
 	CUDA_CHECK_ERROR (cudaEventRecord (stop, 0));
 	CUDA_CHECK_ERROR (cudaEventSynchronize (stop));
 	CUDA_CHECK_ERROR (cudaEventElapsedTime (&elapsedTime, start, stop));
-	elapsedTime = elapsedTime / 5;
+	elapsedTime = elapsedTime / NUM_ITER;
 
 
 	fprintf (stderr, "Execution time: %f ms\n", elapsedTime);

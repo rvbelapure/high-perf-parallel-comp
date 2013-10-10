@@ -20,7 +20,7 @@ reduce: $(reduce_CUOBJS) $(reduce_COBJS)
 	$(CC) -o $@ -c $<
 
 %.o__cu: %.cu
-	$(NVCC) $(NVCCFLAGS) -o $@ -c $< -DBS=512
+	$(NVCC) $(NVCCFLAGS) -o $@ -c $< -DNUM_ITER=5 -DBS=512
 
 clean:
 	rm -f core *.o__cu *.o__c *~ reduce
