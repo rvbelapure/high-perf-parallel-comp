@@ -114,6 +114,7 @@ __global__ void
 reduceSeqAddKernel (dtype* In, dtype *Out, unsigned int N)
 {
 	/* Fill in your code here */
+	/* Replicate the access pattern as shown the lecture slides for version 3 */
 }
 
 
@@ -150,6 +151,11 @@ __global__ void
 reduceFirstAddKernel (dtype* In, dtype *Out, unsigned int N)
 {
 	/* Fill in your code here */
+	/* As it can be seen from `reduceSeqAdd`, the total number of threads
+		 have been halved */
+	/* Thus, you need to load 2 elements from the global memory, add them, and
+		 then store the sum in the shared memory before reduction over the shared
+		 memory occurs */
 }
 
 
@@ -186,6 +192,7 @@ __global__ void
 reduceUnrollLastKernel (dtype* In, dtype *Out, unsigned int N)
 {
 	/* Fill in your code here */
+	/* unroll the loop when there are fewer than 32 threads working */
 }
 
 
@@ -223,6 +230,8 @@ __global__ void
 reduceUnrollAllKernel (dtype* In, dtype *Out, unsigned int N)
 {
 	/* Fill in your code here */
+	/* do a complete unrolling using #define or -D compiler option to specify 
+		 the thread block size */
 }
 
 
@@ -261,6 +270,8 @@ __global__ void
 reduceMultAddKernel (dtype* In, dtype *Out, unsigned int N)
 {
 	/* Fill in your code here */
+	/* Instead of just adding 2 elements in the beginning, try adding more 
+		 before reducing the partial sums over the shared memory */
 }
 
 
