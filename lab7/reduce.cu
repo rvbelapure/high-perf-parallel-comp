@@ -93,7 +93,7 @@ reduceNonDivergeKernel (dtype* In, dtype *Out, unsigned int N)
 
 	/* reduce in shared memory */
 	int threadcount = blockDim.x / 2;
-	for(stride = 1; threadcount > 1; stride *= 2) {
+	for(stride = 1; stride < blockDim.x; stride *= 2) {
 		if(threadIdx.x < threadcount)
 		{
 			buffer[threadIdx.x * stride * 2] += buffer[threadIdx.x * stride * 2 + stride];
