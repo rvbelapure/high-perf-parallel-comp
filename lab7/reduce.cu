@@ -78,6 +78,35 @@ __global__ void
 reduceNonDivergeKernel (dtype* In, dtype *Out, unsigned int N)
 {
 	/* Fill in your code here */
+	__shared__ dtype buffer[BS];
+	unsigned int tid = blockIdx.x * blockDim.x + threadIdx.x;
+	unsigned int stride;
+	
+
+	/* load data to buffer */
+	if(tid < N) {
+		buffer[threadIdx.x] = In[tid];
+	} else {
+		buffer[threadIdx.x] = (dtype) 0.0;
+	}
+	__syncthreads ();
+
+	/* reduce in shared memory */
+	int threadcount = blockDim.x / 2;
+	for(stride = 1; threadcount > 1; stride *= 2) {
+		if(threadIdx.x < threadcount)
+		{
+			buffer[threadIdx.x * stride * 2] += buffer[threadIdx.x * stride * 2 + stride];
+		}
+		threadcount /= 2;
+		__syncthreads ();
+	}
+
+	/* store back the reduced result */
+	if(threadIdx.x == 0) {
+		Out[blockIdx.x] = buffer[0];
+	}
+
 }
 
 
