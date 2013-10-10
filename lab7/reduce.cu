@@ -215,6 +215,42 @@ reduceFirstAddKernel (dtype* In, dtype *Out, unsigned int N)
 	/* Thus, you need to load 2 elements from the global memory, add them, and
 		 then store the sum in the shared memory before reduction over the shared
 		 memory occurs */
+	__shared__ dtype buffer[BS];
+	unsigned int tid = blockIdx.x * blockDim.x + threadIdx.x;
+	unsigned int stride;
+	
+
+	int threadcount = blockDim.x;
+	/* load data to buffer */
+	if(tid < N) {
+		dtype ele = 0.0;
+		if(tid + threadcount < N)
+			ele = In[tid + threadcount];
+
+		buffer[threadIdx.x] = In[tid] + ele;
+
+	} else {
+		buffer[threadIdx.x] = (dtype) 0.0;
+	}
+	__syncthreads ();
+
+	threadcount /= 2;
+	/* reduce in shared memory */
+#pragma unroll
+	for(stride = 1; stride < BS ; stride *= 2) {
+		if(threadIdx.x < threadcount)
+		{
+			buffer[threadIdx.x] += buffer[threadIdx.x + threadcount];
+		}
+		threadcount /= 2;
+		__syncthreads ();
+	}
+
+	/* store back the reduced result */
+	if(threadIdx.x == 0) {
+		Out[blockIdx.x] = buffer[0];
+	}
+
 }
 
 
