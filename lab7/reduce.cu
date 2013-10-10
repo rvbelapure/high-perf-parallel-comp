@@ -144,6 +144,36 @@ reduceSeqAddKernel (dtype* In, dtype *Out, unsigned int N)
 {
 	/* Fill in your code here */
 	/* Replicate the access pattern as shown the lecture slides for version 3 */
+	__shared__ dtype buffer[BS];
+	unsigned int tid = blockIdx.x * blockDim.x + threadIdx.x;
+	unsigned int stride;
+	
+
+	/* load data to buffer */
+	if(tid < N) {
+		buffer[threadIdx.x] = In[tid];
+	} else {
+		buffer[threadIdx.x] = (dtype) 0.0;
+	}
+	__syncthreads ();
+
+	/* reduce in shared memory */
+	int threadcount = blockDim.x / 2;
+#pragma unroll
+	for(stride = 1; stride < BS ; stride *= 2) {
+		if(threadIdx.x < threadcount)
+		{
+			buffer[threadIdx.x] += buffer[threadIdx.x + threadcount];
+		}
+		threadcount /= 2;
+		__syncthreads ();
+	}
+
+	/* store back the reduced result */
+	if(threadIdx.x == 0) {
+		Out[blockIdx.x] = buffer[0];
+	}
+
 }
 
 
