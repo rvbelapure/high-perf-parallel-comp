@@ -1,0 +1,26 @@
+#include "driver.h"
+#include "reduce.h"
+#include "cuda_utils.h"
+
+void
+initCudaArray (dtype **d_A, dtype *h_A, unsigned int N)
+{
+	CUDA_CHECK_ERROR (cudaMalloc ((void**) d_A, N * sizeof (dtype)));
+	CUDA_CHECK_ERROR (cudaMemcpy (*d_A, h_A, N * sizeof (dtype),
+																cudaMemcpyHostToDevice));
+}
+
+void
+cudaReduction (dtype *A, unsigned int N, unsigned int OPT)
+{
+	unsigned int timer;
+
+	CUDA_CHECK_ERROR (cutCreateTimer (&timer));
+	CUDA_CHECK_ERROR (cudaEventCreate ());
+}
+
+__global__ void 
+reduce ()
+{
+
+}
