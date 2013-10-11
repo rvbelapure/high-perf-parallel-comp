@@ -321,18 +321,13 @@ reduceUnrollLastKernel (dtype* In, dtype *Out, unsigned int N)
 
 	if(threadIdx.x < 32)
 	{
-		buffer[threadIdx.x] += buffer[threadIdx.x + 32];
-		__syncthreads ();
-		buffer[threadIdx.x] += buffer[threadIdx.x + 16];
-		__syncthreads ();
-		buffer[threadIdx.x] += buffer[threadIdx.x + 8];
-		__syncthreads ();
-		buffer[threadIdx.x] += buffer[threadIdx.x + 4];
-		__syncthreads ();
-		buffer[threadIdx.x] += buffer[threadIdx.x + 2];
-		__syncthreads ();
-		buffer[threadIdx.x] += buffer[threadIdx.x + 1];
-		__syncthreads ();
+		volatile dtype *sm = buffer;
+		sm[threadIdx.x] += sm[threadIdx.x + 32];
+		sm[threadIdx.x] += sm[threadIdx.x + 16];
+		sm[threadIdx.x] += sm[threadIdx.x + 8];
+		sm[threadIdx.x] += sm[threadIdx.x + 4];
+		sm[threadIdx.x] += sm[threadIdx.x + 2];
+		sm[threadIdx.x] += sm[threadIdx.x + 1];
 	}
 
 	/* store back the reduced result */
@@ -433,21 +428,15 @@ reduceUnrollAllKernel (dtype* In, dtype *Out, unsigned int N)
 	}	
 
 	/* No need to go below BS>=128. we have already unrolled it below */
-	
 	if(threadIdx.x < 32)
 	{
-		buffer[threadIdx.x] += buffer[threadIdx.x + 32];
-		__syncthreads ();
-		buffer[threadIdx.x] += buffer[threadIdx.x + 16];
-		__syncthreads ();
-		buffer[threadIdx.x] += buffer[threadIdx.x + 8];
-		__syncthreads ();
-		buffer[threadIdx.x] += buffer[threadIdx.x + 4];
-		__syncthreads ();
-		buffer[threadIdx.x] += buffer[threadIdx.x + 2];
-		__syncthreads ();
-		buffer[threadIdx.x] += buffer[threadIdx.x + 1];
-		__syncthreads ();
+		volatile dtype *sm = buffer;
+		sm[threadIdx.x] += sm[threadIdx.x + 32];
+		sm[threadIdx.x] += sm[threadIdx.x + 16];
+		sm[threadIdx.x] += sm[threadIdx.x + 8];
+		sm[threadIdx.x] += sm[threadIdx.x + 4];
+		sm[threadIdx.x] += sm[threadIdx.x + 2];
+		sm[threadIdx.x] += sm[threadIdx.x + 1];
 	}
 
 	/* store back the reduced result */
@@ -550,21 +539,15 @@ reduceMultAddKernel (dtype* In, dtype *Out, unsigned int N)
 	}	
 
 	/* No need to go below BS>=128. we have already unrolled it below */
-	
 	if(threadIdx.x < 32)
 	{
-		buffer[threadIdx.x] += buffer[threadIdx.x + 32];
-		__syncthreads ();
-		buffer[threadIdx.x] += buffer[threadIdx.x + 16];
-		__syncthreads ();
-		buffer[threadIdx.x] += buffer[threadIdx.x + 8];
-		__syncthreads ();
-		buffer[threadIdx.x] += buffer[threadIdx.x + 4];
-		__syncthreads ();
-		buffer[threadIdx.x] += buffer[threadIdx.x + 2];
-		__syncthreads ();
-		buffer[threadIdx.x] += buffer[threadIdx.x + 1];
-		__syncthreads ();
+		volatile dtype *sm = buffer;
+		sm[threadIdx.x] += sm[threadIdx.x + 32];
+		sm[threadIdx.x] += sm[threadIdx.x + 16];
+		sm[threadIdx.x] += sm[threadIdx.x + 8];
+		sm[threadIdx.x] += sm[threadIdx.x + 4];
+		sm[threadIdx.x] += sm[threadIdx.x + 2];
+		sm[threadIdx.x] += sm[threadIdx.x + 1];
 	}
 
 	/* store back the reduced result */
