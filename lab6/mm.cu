@@ -2,6 +2,8 @@
 #include "mm.h"
 #include "cuda_utils.h"
 
+#define MY_BLOCK_SIZE 64
+
 void
 initCudaArray (dtype **d_A, dtype *h_A, unsigned int N)
 {
@@ -444,17 +446,136 @@ void
 mmMyOwnKernel (dtype* A, dtype* B, dtype* C, unsigned int N)
 {
 	/* insert your code here */
+	/* block indices */
+	int bidx = blockIdx.x;
+	int bidy = blockIdx.y;
+
+	/* thread indices */
+	int tidx = threadIdx.x;
+	int tidy = threadIdx.y;
+
+	/* row  index of first sub-block of matrix A processed by this thread block */
+	int aStart = N * (MY_BLOCK_SIZE * bidy);
+	/* row  index of last sub-block of matrix A processed by this thread block */
+	int aEnd   = aStart + N - 1;
+	/* increment size for sub-block of matrix A */
+	int aInc = MY_BLOCK_SIZE;
+
+	/* col index of first sub-blcok of matrx B processed by this thread block */
+	int bStart = MY_BLOCK_SIZE * bidx;
+	/* last sub block is not needed since it'll have 1-on-1 match to A */
+	/* increment size for sub-block of matrix B */
+	int bInc = MY_BLOCK_SIZE * N;
+
+	/* temporary variable for accummulating the partial results */
+	float cSub[16] = {0};
+
+	/* Loop over the sub-matrices of A and B */
+	for (int a = aStart, b = bStart; a <= aEnd; a += aInc, b += bInc) {
+		/* declaration of shared memory for storing sub-block of A */
+		__shared__ float As[MY_BLOCK_SIZE][MY_BLOCK_SIZE];
+
+		/* declaration of shared memory for storing sub-block of B */
+		__shared__ float Bs[MY_BLOCK_SIZE][MY_BLOCK_SIZE];
+
+		/* load the matrices from memory to shared memory */
+		As[4*tidy + 0][tidx + 0] = A[a + N * (4*tidy + 0) + (tidx + 0)];
+		Bs[4*tidy + 0][tidx + 0] = B[b + N * (4*tidy + 0) + (tidx + 0)];
+		As[4*tidy + 1][tidx + 0] = A[a + N * (4*tidy + 1) + (tidx + 0)];
+		Bs[4*tidy + 1][tidx + 0] = B[b + N * (4*tidy + 1) + (tidx + 0)];
+		As[4*tidy + 2][tidx + 0] = A[a + N * (4*tidy + 2) + (tidx + 0)];
+		Bs[4*tidy + 2][tidx + 0] = B[b + N * (4*tidy + 2) + (tidx + 0)];
+		As[4*tidy + 3][tidx + 0] = A[a + N * (4*tidy + 3) + (tidx + 0)];
+		Bs[4*tidy + 3][tidx + 0] = B[b + N * (4*tidy + 3) + (tidx + 0)];
+		As[4*tidy + 0][tidx + 16] = A[a + N * (4*tidy + 0) + (tidx + 16)];
+		Bs[4*tidy + 0][tidx + 16] = B[b + N * (4*tidy + 0) + (tidx + 16)];
+		As[4*tidy + 1][tidx + 16] = A[a + N * (4*tidy + 1) + (tidx + 16)];
+		Bs[4*tidy + 1][tidx + 16] = B[b + N * (4*tidy + 1) + (tidx + 16)];
+		As[4*tidy + 2][tidx + 16] = A[a + N * (4*tidy + 2) + (tidx + 16)];
+		Bs[4*tidy + 2][tidx + 16] = B[b + N * (4*tidy + 2) + (tidx + 16)];
+		As[4*tidy + 3][tidx + 16] = A[a + N * (4*tidy + 3) + (tidx + 16)];
+		Bs[4*tidy + 3][tidx + 16] = B[b + N * (4*tidy + 3) + (tidx + 16)];
+		As[4*tidy + 0][tidx + 32] = A[a + N * (4*tidy + 0) + (tidx + 32)];
+		Bs[4*tidy + 0][tidx + 32] = B[b + N * (4*tidy + 0) + (tidx + 32)];
+		As[4*tidy + 1][tidx + 32] = A[a + N * (4*tidy + 1) + (tidx + 32)];
+		Bs[4*tidy + 1][tidx + 32] = B[b + N * (4*tidy + 1) + (tidx + 32)];
+		As[4*tidy + 2][tidx + 32] = A[a + N * (4*tidy + 2) + (tidx + 32)];
+		Bs[4*tidy + 2][tidx + 32] = B[b + N * (4*tidy + 2) + (tidx + 32)];
+		As[4*tidy + 3][tidx + 32] = A[a + N * (4*tidy + 3) + (tidx + 32)];
+		Bs[4*tidy + 3][tidx + 32] = B[b + N * (4*tidy + 3) + (tidx + 32)];
+		As[4*tidy + 0][tidx + 48] = A[a + N * (4*tidy + 0) + (tidx + 48)];
+		Bs[4*tidy + 0][tidx + 48] = B[b + N * (4*tidy + 0) + (tidx + 48)];
+		As[4*tidy + 1][tidx + 48] = A[a + N * (4*tidy + 1) + (tidx + 48)];
+		Bs[4*tidy + 1][tidx + 48] = B[b + N * (4*tidy + 1) + (tidx + 48)];
+		As[4*tidy + 2][tidx + 48] = A[a + N * (4*tidy + 2) + (tidx + 48)];
+		Bs[4*tidy + 2][tidx + 48] = B[b + N * (4*tidy + 2) + (tidx + 48)];
+		As[4*tidy + 3][tidx + 48] = A[a + N * (4*tidy + 3) + (tidx + 48)];
+		Bs[4*tidy + 3][tidx + 48] = B[b + N * (4*tidy + 3) + (tidx + 48)];
+
+		__syncthreads();
+
+		/* multiply the two matrices together */
+		/* one thread per element of C */
+#pragma unroll
+		for (int k = 0; k < MY_BLOCK_SIZE; ++k)
+		{
+			cSub[0] += As[4*tidy + 0][k] * Bs[k][(tidx) + 0];
+			cSub[1] += As[4*tidy + 0][k] * Bs[k][(tidx) + 16];
+			cSub[2] += As[4*tidy + 0][k] * Bs[k][(tidx) + 32];
+			cSub[3] += As[4*tidy + 0][k] * Bs[k][(tidx) + 48];
+
+			cSub[4] += As[4*tidy + 1][k] * Bs[k][(tidx) + 0];
+			cSub[5] += As[4*tidy + 1][k] * Bs[k][(tidx) + 16];
+			cSub[6] += As[4*tidy + 1][k] * Bs[k][(tidx) + 32];
+			cSub[7] += As[4*tidy + 1][k] * Bs[k][(tidx) + 48];
+
+			cSub[8] += As[4*tidy + 2][k] * Bs[k][(tidx) + 0];
+			cSub[9] += As[4*tidy + 2][k] * Bs[k][(tidx) + 16];
+			cSub[10] += As[4*tidy + 2][k] * Bs[k][(tidx) + 32];
+			cSub[11] += As[4*tidy + 2][k] * Bs[k][(tidx) + 48];
+
+			cSub[12] += As[4*tidy + 3][k] * Bs[k][(tidx) + 0];
+			cSub[13] += As[4*tidy + 3][k] * Bs[k][(tidx) + 16];
+			cSub[14] += As[4*tidy + 3][k] * Bs[k][(tidx) + 32];
+			cSub[15] += As[4*tidy + 3][k] * Bs[k][(tidx) + 48];
+		}
+
+		/* synchornize before loading next sub-blocks */
+		__syncthreads();
+	}
+
+	/* write back the results */
+	int c = N * MY_BLOCK_SIZE * bidy + MY_BLOCK_SIZE * bidx;
+	C[c + N * (4*tidy + 0) + (tidx + 0) ] = cSub[0];
+	C[c + N * (4*tidy + 0) + (tidx + 16) ] = cSub[1];
+	C[c + N * (4*tidy + 0) + (tidx + 32) ] = cSub[2];
+	C[c + N * (4*tidy + 0) + (tidx + 48) ] = cSub[3];
+
+	C[c + N * (4*tidy + 1) + (tidx + 0) ] = cSub[4];
+	C[c + N * (4*tidy + 1) + (tidx + 16) ] = cSub[5];
+	C[c + N * (4*tidy + 1) + (tidx + 32) ] = cSub[6];
+	C[c + N * (4*tidy + 1) + (tidx + 48) ] = cSub[7];
+
+	C[c + N * (4*tidy + 2) + (tidx + 0) ] = cSub[8];
+	C[c + N * (4*tidy + 2) + (tidx + 16) ] = cSub[9];
+	C[c + N * (4*tidy + 2) + (tidx + 32) ] = cSub[10];
+	C[c + N * (4*tidy + 2) + (tidx + 48) ] = cSub[11];
+
+	C[c + N * (4*tidy + 3) + (tidx + 0) ] = cSub[12];
+	C[c + N * (4*tidy + 3) + (tidx + 16) ] = cSub[13];
+	C[c + N * (4*tidy + 3) + (tidx + 32) ] = cSub[14];
+	C[c + N * (4*tidy + 3) + (tidx + 48) ] = cSub[15];
+
 }
 void
 mmMyOwn (dtype* A, dtype* B, dtype* C, unsigned int N)
 {
 	unsigned int nBlocks;
 
-
-	nBlocks = (N + BLOCK_SIZE - 1) / BLOCK_SIZE;
+	nBlocks = (N + MY_BLOCK_SIZE - 1) / MY_BLOCK_SIZE;
 
 	dim3 grid (nBlocks, nBlocks);	
-	dim3 block (BLOCK_SIZE, BLOCK_SIZE / 8);	
+	dim3 block (MY_BLOCK_SIZE / 4, MY_BLOCK_SIZE / 4);	
 
 	mmMyOwnKernel <<<grid, block>>> (A, B, C, N);
 	cudaThreadSynchronize ();
