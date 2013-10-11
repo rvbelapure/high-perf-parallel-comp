@@ -288,6 +288,52 @@ reduceUnrollLastKernel (dtype* In, dtype *Out, unsigned int N)
 {
 	/* Fill in your code here */
 	/* unroll the loop when there are fewer than 32 threads working */
+	__shared__ dtype buffer[BS];
+	unsigned int tid = blockIdx.x * blockDim.x + threadIdx.x;
+	unsigned int stride;
+	
+
+	int threadcount = blockDim.x;
+	/* load data to buffer */
+	if(tid < N) {
+		dtype ele = 0.0;
+		if(tid + threadcount < N)
+			ele = In[tid + threadcount];
+
+		buffer[threadIdx.x] = In[tid] + ele;
+
+	} else {
+		buffer[threadIdx.x] = (dtype) 0.0;
+	}
+	__syncthreads ();
+
+	threadcount /= 2;
+	/* reduce in shared memory */
+//#pragma unroll
+	for(stride = 1; threadcount > 32 ; stride *= 2) {
+		if(threadIdx.x < threadcount)
+		{
+			buffer[threadIdx.x] += buffer[threadIdx.x + threadcount];
+		}
+		threadcount /= 2;
+		__syncthreads ();
+	}
+
+	if(threadIdx.x < 32)
+	{
+		buffer[threadIdx.x] += buffer[threadIdx.x + 32];
+		buffer[threadIdx.x] += buffer[threadIdx.x + 16];
+		buffer[threadIdx.x] += buffer[threadIdx.x + 8];
+		buffer[threadIdx.x] += buffer[threadIdx.x + 4];
+		buffer[threadIdx.x] += buffer[threadIdx.x + 2];
+		buffer[threadIdx.x] += buffer[threadIdx.x + 1];
+	}
+
+	/* store back the reduced result */
+	if(threadIdx.x == 0) {
+		Out[blockIdx.x] = buffer[0];
+	}
+
 }
 
 
@@ -326,7 +372,7 @@ reduceUnrollAllKernel (dtype* In, dtype *Out, unsigned int N)
 {
 	/* Fill in your code here */
 	/* do a complete unrolling using #define or -D compiler option to specify 
-		 the thread block size */
+		 the thread block size */	
 }
 
 
