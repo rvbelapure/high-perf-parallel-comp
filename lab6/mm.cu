@@ -479,14 +479,39 @@ mmMyOwnKernel (dtype* A, dtype* B, dtype* C, unsigned int N)
 		__shared__ float Bs[MY_BLOCK_SIZE][MY_BLOCK_SIZE];
 
 		/* load the matrices from memory to shared memory */
-		#pragma unroll
-		for(int i=0; i<8; i++){
-			As[tidy + i*4][tidx] = A[a + N * (tidy + i * 4) + tidx];
-			Bs[tidy + i*4][tidx] = B[b + N * (tidy + i * 4) + tidx];
+		As[tidy * 8 + 0][tidx * 2 + 0] = A[a + N * (tidy * 8 + 0) + tidx * 2 + 0];
+		Bs[tidy * 8 + 0][tidx * 2 + 0] = B[b + N * (tidy * 8 + 0) + tidx * 2 + 0];
+		As[tidy * 8 + 1][tidx * 2 + 0] = A[a + N * (tidy * 8 + 1) + tidx * 2 + 0];
+		Bs[tidy * 8 + 1][tidx * 2 + 0] = B[b + N * (tidy * 8 + 1) + tidx * 2 + 0];
+		As[tidy * 8 + 2][tidx * 2 + 0] = A[a + N * (tidy * 8 + 2) + tidx * 2 + 0];
+		Bs[tidy * 8 + 2][tidx * 2 + 0] = B[b + N * (tidy * 8 + 2) + tidx * 2 + 0];
+		As[tidy * 8 + 3][tidx * 2 + 0] = A[a + N * (tidy * 8 + 3) + tidx * 2 + 0];
+		Bs[tidy * 8 + 3][tidx * 2 + 0] = B[b + N * (tidy * 8 + 3) + tidx * 2 + 0];
+		As[tidy * 8 + 4][tidx * 2 + 0] = A[a + N * (tidy * 8 + 4) + tidx * 2 + 0];
+		Bs[tidy * 8 + 4][tidx * 2 + 0] = B[b + N * (tidy * 8 + 4) + tidx * 2 + 0];
+		As[tidy * 8 + 5][tidx * 2 + 0] = A[a + N * (tidy * 8 + 5) + tidx * 2 + 0];
+		Bs[tidy * 8 + 5][tidx * 2 + 0] = B[b + N * (tidy * 8 + 5) + tidx * 2 + 0];
+		As[tidy * 8 + 6][tidx * 2 + 0] = A[a + N * (tidy * 8 + 6) + tidx * 2 + 0];
+		Bs[tidy * 8 + 6][tidx * 2 + 0] = B[b + N * (tidy * 8 + 6) + tidx * 2 + 0];
+		As[tidy * 8 + 7][tidx * 2 + 0] = A[a + N * (tidy * 8 + 7) + tidx * 2 + 0];
+		Bs[tidy * 8 + 7][tidx * 2 + 0] = B[b + N * (tidy * 8 + 7) + tidx * 2 + 0];
 
-			As[tidy + i*4][tidx + 16] = A[a + N * (tidy + i * 4) + tidx + 16];
-			Bs[tidy + i*4][tidx + 16] = B[b + N * (tidy + i * 4) + tidx + 16];
-		}
+		As[tidy * 8 + 0][tidx * 2 + 1] = A[a + N * (tidy * 8 + 0) + tidx * 2 + 1];
+		Bs[tidy * 8 + 0][tidx * 2 + 1] = B[b + N * (tidy * 8 + 0) + tidx * 2 + 1];
+		As[tidy * 8 + 1][tidx * 2 + 1] = A[a + N * (tidy * 8 + 1) + tidx * 2 + 1];
+		Bs[tidy * 8 + 1][tidx * 2 + 1] = B[b + N * (tidy * 8 + 1) + tidx * 2 + 1];
+		As[tidy * 8 + 2][tidx * 2 + 1] = A[a + N * (tidy * 8 + 2) + tidx * 2 + 1];
+		Bs[tidy * 8 + 2][tidx * 2 + 1] = B[b + N * (tidy * 8 + 2) + tidx * 2 + 1];
+		As[tidy * 8 + 3][tidx * 2 + 1] = A[a + N * (tidy * 8 + 3) + tidx * 2 + 1];
+		Bs[tidy * 8 + 3][tidx * 2 + 1] = B[b + N * (tidy * 8 + 3) + tidx * 2 + 1];
+		As[tidy * 8 + 4][tidx * 2 + 1] = A[a + N * (tidy * 8 + 4) + tidx * 2 + 1];
+		Bs[tidy * 8 + 4][tidx * 2 + 1] = B[b + N * (tidy * 8 + 4) + tidx * 2 + 1];
+		As[tidy * 8 + 5][tidx * 2 + 1] = A[a + N * (tidy * 8 + 5) + tidx * 2 + 1];
+		Bs[tidy * 8 + 5][tidx * 2 + 1] = B[b + N * (tidy * 8 + 5) + tidx * 2 + 1];
+		As[tidy * 8 + 6][tidx * 2 + 1] = A[a + N * (tidy * 8 + 6) + tidx * 2 + 1];
+		Bs[tidy * 8 + 6][tidx * 2 + 1] = B[b + N * (tidy * 8 + 6) + tidx * 2 + 1];
+		As[tidy * 8 + 7][tidx * 2 + 1] = A[a + N * (tidy * 8 + 7) + tidx * 2 + 1];
+		Bs[tidy * 8 + 7][tidx * 2 + 1] = B[b + N * (tidy * 8 + 7) + tidx * 2 + 1];
 
 		__syncthreads();
 
@@ -495,23 +520,22 @@ mmMyOwnKernel (dtype* A, dtype* B, dtype* C, unsigned int N)
 		#pragma unroll
 		for (int k = 0; k < MY_BLOCK_SIZE; ++k)
 		{
-			cSub[0] += As[tidy][k] * Bs[k][tidx];
-			cSub[1] += As[tidy + 4][k] * Bs[k][tidx];
-			cSub[2] += As[tidy + 8][k] * Bs[k][tidx];
-			cSub[3] += As[tidy + 12][k] * Bs[k][tidx];
-			cSub[4] += As[tidy + 16][k] * Bs[k][tidx];
-			cSub[5] += As[tidy + 20][k] * Bs[k][tidx];
-			cSub[6] += As[tidy + 24][k] * Bs[k][tidx];
-			cSub[7] += As[tidy + 28][k] * Bs[k][tidx];
-
-			cSub[8] += As[tidy][k] * Bs[k][tidx + 16];
-			cSub[9] += As[tidy + 4][k] * Bs[k][tidx + 16];
-			cSub[10] += As[tidy + 8][k] * Bs[k][tidx + 16];
-			cSub[11] += As[tidy + 12][k] * Bs[k][tidx + 16];                       
-			cSub[12] += As[tidy + 16][k] * Bs[k][tidx + 16];  
-			cSub[13] += As[tidy + 20][k] * Bs[k][tidx + 16];                        
-			cSub[14] += As[tidy + 24][k] * Bs[k][tidx + 16];
-			cSub[15] += As[tidy + 28][k] * Bs[k][tidx + 16];
+			cSub[0] += As[tidy * 8 + 0][k] * Bs[k][tidx * 2 + 0];
+			cSub[1] += As[tidy * 8 + 0][k] * Bs[k][tidx * 2 + 1];
+			cSub[2] += As[tidy * 8 + 1][k] * Bs[k][tidx * 2 + 0];
+			cSub[3] += As[tidy * 8 + 1][k] * Bs[k][tidx * 2 + 1];
+			cSub[4] += As[tidy * 8 + 2][k] * Bs[k][tidx * 2 + 0];
+			cSub[5] += As[tidy * 8 + 2][k] * Bs[k][tidx * 2 + 1];
+			cSub[6] += As[tidy * 8 + 3][k] * Bs[k][tidx * 2 + 0];
+			cSub[7] += As[tidy * 8 + 3][k] * Bs[k][tidx * 2 + 1];
+			cSub[8] += As[tidy * 8 + 4][k] * Bs[k][tidx * 2 + 0];
+			cSub[9] += As[tidy * 8 + 4][k] * Bs[k][tidx * 2 + 1];
+			cSub[10] += As[tidy * 8 + 5][k] * Bs[k][tidx * 2 + 0];
+			cSub[11] += As[tidy * 8 + 5][k] * Bs[k][tidx * 2 + 1];
+			cSub[12] += As[tidy * 8 + 6][k] * Bs[k][tidx * 2 + 0];
+			cSub[13] += As[tidy * 8 + 6][k] * Bs[k][tidx * 2 + 1];
+			cSub[14] += As[tidy * 8 + 7][k] * Bs[k][tidx * 2 + 0];
+			cSub[15] += As[tidy * 8 + 7][k] * Bs[k][tidx * 2 + 1];
 		}
 
 		/* synchornize before loading next sub-blocks */
@@ -520,23 +544,22 @@ mmMyOwnKernel (dtype* A, dtype* B, dtype* C, unsigned int N)
 
 	/* write back the results */
 	int c = N * MY_BLOCK_SIZE * bidy + MY_BLOCK_SIZE * bidx;
-	C[c + N * tidy + tidx] = cSub[0];
-	C[c + N * (tidy + 4) + tidx] = cSub[1];
-	C[c + N * (tidy + 8) + tidx] = cSub[2];
-	C[c + N * (tidy + 12) + tidx] = cSub[3];
-	C[c + N * (tidy + 16) + tidx] = cSub[4];
-	C[c + N * (tidy + 20) + tidx] = cSub[5];
-	C[c + N * (tidy + 24) + tidx] = cSub[6];
-	C[c + N * (tidy + 28) + tidx] = cSub[7];
-
-	C[c + N * tidy + tidx + 16] = cSub[8];
-	C[c + N * (tidy + 4) + tidx + 16] = cSub[9];
-	C[c + N * (tidy + 8) + tidx + 16] = cSub[10];
-	C[c + N * (tidy + 12) + tidx + 16] = cSub[11];
-	C[c + N * (tidy + 16) + tidx + 16] = cSub[12];
-	C[c + N * (tidy + 20) + tidx + 16] = cSub[13];
-	C[c + N * (tidy + 24) + tidx + 16] = cSub[14];
-	C[c + N * (tidy + 28) + tidx + 16] = cSub[15];
+	C[c + N * (tidy * 8 + 0) + tidx * 2 + 0] = cSub[0];
+	C[c + N * (tidy * 8 + 0) + tidx * 2 + 1] = cSub[1];
+	C[c + N * (tidy * 8 + 1) + tidx * 2 + 0] = cSub[2];
+	C[c + N * (tidy * 8 + 1) + tidx * 2 + 1] = cSub[3];
+	C[c + N * (tidy * 8 + 2) + tidx * 2 + 0] = cSub[4];
+	C[c + N * (tidy * 8 + 2) + tidx * 2 + 1] = cSub[5];
+	C[c + N * (tidy * 8 + 3) + tidx * 2 + 0] = cSub[6];
+	C[c + N * (tidy * 8 + 3) + tidx * 2 + 1] = cSub[7];
+	C[c + N * (tidy * 8 + 4) + tidx * 2 + 0] = cSub[8];
+	C[c + N * (tidy * 8 + 4) + tidx * 2 + 1] = cSub[9];
+	C[c + N * (tidy * 8 + 5) + tidx * 2 + 0] = cSub[10];
+	C[c + N * (tidy * 8 + 5) + tidx * 2 + 1] = cSub[11];
+	C[c + N * (tidy * 8 + 6) + tidx * 2 + 0] = cSub[12];
+	C[c + N * (tidy * 8 + 6) + tidx * 2 + 1] = cSub[13];
+	C[c + N * (tidy * 8 + 7) + tidx * 2 + 0] = cSub[14];
+	C[c + N * (tidy * 8 + 7) + tidx * 2 + 1] = cSub[15];
 }
 void
 mmMyOwn (dtype* A, dtype* B, dtype* C, unsigned int N)
