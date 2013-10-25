@@ -1,8 +1,8 @@
 ifeq ($(CXX),icpc)
-    override CXXFLAGS += -xSSE4.2 -no-intel-extensions
+    override CXXFLAGS += -O3 -xSSE4.2 -no-intel-extensions
     override LDFLAGS += -static-intel
 else
-    override CXXFLAGS += -march=corei7
+    override CXXFLAGS += -O3 -march=corei7
     override LDFLAGS += -static-libgcc
 endif
 
