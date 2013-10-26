@@ -8,7 +8,25 @@
 #include <string.h>
 #include <dlfcn.h>
 
-void test_conversion(const char* method_name, const char* grayscale_image_path,  const char* integral_error_image_path,
+void write_integral_error_image(const char* integral_error_image_path,
+	const uint32_t* integral_image, const uint32_t* reference_integral_image,
+	size_t image_width, size_t image_height)
+{
+	size_t integral_error_image_size = image_width * image_height;
+	uint8_t* integral_error_image = static_cast<uint8_t*>(
+		allocate_aligned_memory(integral_error_image_size, 64));
+	for (size_t i = 0; i < image_height; i++) {
+		for (size_t j = 0; j < image_width; j++) {
+			const uint32_t integral_pixel = integral_image[i * image_width + j];
+			const uint32_t reference_integral_pixel = reference_integral_image[i * image_width + j];
+			integral_error_image[i * image_width + j] = (integral_pixel == reference_integral_pixel) ? 0xFF : 0x00;
+		}
+	}
+	write_bmp_image(integral_error_image_path, integral_error_image, image_width, image_height);
+	release_aligned_memory(integral_error_image);
+}
+
+void test_conversion(const char* method_name, const char* grayscale_image_path, const char* integral_error_image_path,
 	convert_rgb_to_grayscale_function convert_rgb_to_grayscale, integrate_image_function integrate_image,
 	void* rgb_image, void* grayscale_image, void* reference_grayscale_image, void* integral_image, void* reference_integral_image,
 	size_t image_width, size_t image_height, size_t experiments_count, bool is_naive)
@@ -53,9 +71,17 @@ void test_conversion(const char* method_name, const char* grayscale_image_path, 
 		printf("\t\tConversion:  %s\n", (conversion_test_passed ?
 			CSE6230_ESCAPE_GREEN_COLOR "PASSED" CSE6230_ESCAPE_NORMAL_COLOR:
 			CSE6230_ESCAPE_RED_COLOR "FAILED" CSE6230_ESCAPE_NORMAL_COLOR));
-		printf("\t\tIntegration: %s\n", (integration_test_passed ?
-			CSE6230_ESCAPE_GREEN_COLOR "PASSED" CSE6230_ESCAPE_NORMAL_COLOR:
-			CSE6230_ESCAPE_RED_COLOR "FAILED" CSE6230_ESCAPE_NORMAL_COLOR));
+		if (integration_test_passed) {
+			printf("\t\tIntegration: %s\n", CSE6230_ESCAPE_GREEN_COLOR "PASSED" CSE6230_ESCAPE_NORMAL_COLOR);
+		} else {
+			printf("\t\tIntegration: %s (mask for erroneus pixels saved to %s)\n", CSE6230_ESCAPE_RED_COLOR "FAILED" CSE6230_ESCAPE_NORMAL_COLOR, integral_error_image_path);
+		}
+		if (!integration_test_passed) {
+			write_integral_error_image(integral_error_image_path,
+				static_cast<const uint32_t*>(integral_image),
+				static_cast<const uint32_t*>(reference_integral_image),
+				image_width, image_height);
+		}
 	}
 	write_bmp_image(grayscale_image_path, grayscale_image, image_width, image_height);
 }
@@ -112,7 +138,7 @@ int main(int argc, char** argv) {
 		image_width, image_height, experiments_count, true);
 
 	test_conversion("Optimized", "cat-grayscale-optimized.bmp", "cat-integral-errors.bmp",
-		&convert_rgb_to_grayscale_naive, &integrate_image_naive,
+		convert_rgb_to_grayscale_optimized, integrate_image_optimized,
 		rgb_image, grayscale_image, reference_grayscale_image,
 		integral_image, reference_integral_image,
 		image_width, image_height, experiments_count, false);
