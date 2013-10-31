@@ -128,7 +128,6 @@ void integrate_image_optimized(const uint8_t *CSE6230_RESTRICT source_image, uin
 		__m128i sum = zero;
 		for(size_t j = 0 ; (j+16) < width ; j += 16)
 		{
-			int cond = ((i == 0) && (j == 496));
 			/* load ith and (i-1)th row */
 			int curr_start = i*width + j;
 			int prev_start = (i-1)*width + j;
