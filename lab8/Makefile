@@ -2,8 +2,8 @@ ifeq ($(CXX),icpc)
     override CXXFLAGS += -O3 -xSSE4.2 -no-intel-extensions
     override LDFLAGS += -static-intel
 else
-    override CXXFLAGS += -O3 -march=corei7 -g
-    override LDFLAGS += -static-libgcc -g
+    override CXXFLAGS += -O3 -march=corei7
+    override LDFLAGS += -static-libgcc
 endif
 
 all: image-test simdimage
@@ -16,8 +16,7 @@ all: image-test simdimage
 simdimage: libsimdimage.so
 
 libsimdimage.so: image-simd.po
-	$(CXX) $(LDFLAGS) -shared -fPIC -lc -lm -o $@ $^
-#	$(CXX) $(LDFLAGS) -shared -fPIC -Wl,-Bstatic -lc -Wl,-Bstatic -lm -o $@ $^
+	$(CXX) $(LDFLAGS) -shared -fPIC -Wl,-Bstatic -lc -Wl,-Bstatic -lm -o $@ $^
 
 image-test: image-test.o image-reference.o image-io.o timer.o image-simd.o
 	$(CXX) $(LDFLAGS) -o $@ $^ -lrt -ldl

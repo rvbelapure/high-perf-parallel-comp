@@ -3,40 +3,6 @@
 #include <x86intrin.h>
 #include <string.h>
 
-/* prints 128bit var by treating it as vector of cast_to_bits bit numbers */
-void print128_num(const char * message, __m128i var, int cast_to_bits = 8)
-{
-	printf("%s :", message);
-	if(cast_to_bits == 8)
-	{
-		uint8_t *val = (uint8_t *) &var;
-		for(size_t i = 0 ; i < 128 / cast_to_bits ; i++)
-			printf("%i ",val[i]);
-		printf("\n");
-	}
-	else if(cast_to_bits == 16)
-	{
-		uint16_t *val = (uint16_t *) &var;
-		for(size_t i = 0 ; i < 128 / cast_to_bits ; i++)
-			printf("%i ",val[i]);
-		printf("\n");
-	}
-	else if(cast_to_bits == 32)
-	{
-		uint32_t *val = (uint32_t *) &var;
-		for(size_t i = 0 ; i < 128 / cast_to_bits ; i++)
-			printf("%i ",val[i]);
-		printf("\n");
-	}
-	else if(cast_to_bits == 64)
-	{
-		uint64_t *val = (uint64_t *) &var;
-		for(size_t i = 0 ; i < 128 / cast_to_bits ; i++)
-			printf("%i ",val[i]);
-		printf("\n");
-	}
-}
-
 void convert_rgb_to_grayscale_optimized(const uint8_t *CSE6230_RESTRICT rgb_image, uint8_t *CSE6230_RESTRICT grayscale_image, size_t width, size_t height) {
 
 	size_t total_pixels = width * height * 3;
@@ -150,52 +116,89 @@ void convert_rgb_to_grayscale_optimized(const uint8_t *CSE6230_RESTRICT rgb_imag
 }
 
 void integrate_image_optimized(const uint8_t *CSE6230_RESTRICT source_image, uint32_t *CSE6230_RESTRICT integral_image, size_t width, size_t height) {
-	__m128i out[(width / 16) * height * 4];
-	__m128i chunk8, chunk16[2], chunk32[4];
 
+	__m128i chunk1, chunk2;
+	__m128i chunk1_16[2], chunk1_32[4];
+	__m128i chunk2_16[2], chunk2_32[4];
 	__m128i zero = _mm_setzero_si128();
 
-	uint32_t *val = (uint32_t *)out;
-	const uint8_t *src = source_image;
-
-	/* 1. load the complete 1st row. Leave the (width - (width / 16)) elements for serial part */
-	size_t offset = 0, idx = 0;
-	for(size_t i = 0 ; (i+16) < width ; i += 16)
+	for(size_t i = 0 ; i < height ; i++)
 	{
-		chunk8 = _mm_loadu_si128((const __m128i *) (source_image + i) );
-		chunk16[0] = _mm_unpacklo_epi8(chunk8, zero);
-		chunk16[1] = _mm_unpackhi_epi8(chunk8, zero);
-		out[idx] = _mm_unpacklo_epi16(chunk16[0], zero);
-		out[idx+1] = _mm_unpackhi_epi16(chunk16[0], zero);
-		out[idx+2] = _mm_unpacklo_epi16(chunk16[1], zero);
-		out[idx+3] = _mm_unpackhi_epi16(chunk16[1], zero);
-		idx += 4;
-	}
 
-	/* 2. Calculating vertical sums for 128bit representation*/
-	size_t out_width = (width / 16) * 4;
-	for(size_t i = 1 ; i < height ; i++)
-	{
+		__m128i sum = zero;
 		for(size_t j = 0 ; (j+16) < width ; j += 16)
 		{
-			chunk8 = _mm_loadu_si128((const __m128i*) (source_image + i*width + j));
-			chunk16[0] = _mm_unpacklo_epi8(chunk8, zero);
-			chunk16[1] = _mm_unpackhi_epi8(chunk8, zero);
-			chunk32[0] = _mm_unpacklo_epi16(chunk16[0], zero);
-			chunk32[1] = _mm_unpackhi_epi16(chunk16[0], zero);
-			chunk32[2] = _mm_unpacklo_epi16(chunk16[1], zero);
-			chunk32[3] = _mm_unpackhi_epi16(chunk16[1], zero);
+			int cond = ((i == 0) && (j == 496));
+			/* load ith and (i-1)th row */
+			int curr_start = i*width + j;
+			int prev_start = (i-1)*width + j;
+			if(prev_start < 0)
+			{
+				chunk1_32[0] = _mm_setzero_si128();
+				chunk1_32[1] = _mm_setzero_si128();
+				chunk1_32[2] = _mm_setzero_si128();
+				chunk1_32[3] = _mm_setzero_si128();
+			}
+			else
+			{
+				chunk1_32[0] = _mm_loadu_si128((const __m128i *) (integral_image + prev_start));
+				chunk1_32[1] = _mm_loadu_si128((const __m128i *) (integral_image + prev_start + 4));
+				chunk1_32[2] = _mm_loadu_si128((const __m128i *) (integral_image + prev_start + 8));
+				chunk1_32[3] = _mm_loadu_si128((const __m128i *) (integral_image + prev_start + 12));
+			}
 
-			out[idx] = _mm_add_epi32(out[idx - out_width], chunk32[0]);
-			out[idx + 1] = _mm_add_epi32(out[idx + 1 - out_width], chunk32[1]);
-			out[idx + 2] = _mm_add_epi32(out[idx + 2 - out_width], chunk32[2]);
-			out[idx + 3] = _mm_add_epi32(out[idx + 3 - out_width], chunk32[3]);
-			idx += 4;
+			chunk2 = _mm_loadu_si128((const __m128i *) (source_image + curr_start));
+
+			/* convert the loaded data in 32 bit representation */
+			chunk2_16[0] = _mm_unpacklo_epi8(chunk2, zero);
+			chunk2_16[1] = _mm_unpackhi_epi8(chunk2, zero);
+			chunk2_32[0] = _mm_unpacklo_epi16(chunk2_16[0], zero);
+			chunk2_32[1] = _mm_unpackhi_epi16(chunk2_16[0], zero);
+			chunk2_32[2] = _mm_unpacklo_epi16(chunk2_16[1], zero);
+			chunk2_32[3] = _mm_unpackhi_epi16(chunk2_16[1], zero);
+
+			/* horizontal prefix sum */
+			__m128i shifted0 = _mm_slli_si128(chunk2_32[0], 4);
+			__m128i shifted1 = _mm_slli_si128(chunk2_32[1], 4);
+			__m128i shifted2 = _mm_slli_si128(chunk2_32[2], 4);
+			__m128i shifted3 = _mm_slli_si128(chunk2_32[3], 4);
+			for(size_t k = 0 ; k < 3 ; k++)
+			{
+				chunk2_32[0] = _mm_add_epi32(chunk2_32[0], shifted0);
+				chunk2_32[1] = _mm_add_epi32(chunk2_32[1], shifted1);
+				chunk2_32[2] = _mm_add_epi32(chunk2_32[2], shifted2);
+				chunk2_32[3] = _mm_add_epi32(chunk2_32[3], shifted3);
+				shifted0 = _mm_slli_si128(shifted0, 4);
+				shifted1 = _mm_slli_si128(shifted1, 4);
+				shifted2 = _mm_slli_si128(shifted2, 4);
+				shifted3 = _mm_slli_si128(shifted3, 4);
+			}
+			chunk2_32[0] = _mm_add_epi32(chunk2_32[0], sum);
+			sum = _mm_set1_epi32(_mm_extract_epi32(chunk2_32[0], 3));
+			chunk2_32[1] = _mm_add_epi32(chunk2_32[1], sum);
+			sum = _mm_set1_epi32(_mm_extract_epi32(chunk2_32[1], 3));
+			chunk2_32[2] = _mm_add_epi32(chunk2_32[2], sum);
+			sum = _mm_set1_epi32(_mm_extract_epi32(chunk2_32[2], 3));
+			chunk2_32[3] = _mm_add_epi32(chunk2_32[3], sum);
+			sum = _mm_set1_epi32(_mm_extract_epi32(chunk2_32[3], 3));
+
+			/* vertical sum */
+			chunk2_32[0] = _mm_add_epi32(chunk1_32[0], chunk2_32[0]);
+			chunk2_32[1] = _mm_add_epi32(chunk1_32[1], chunk2_32[1]);
+			chunk2_32[2] = _mm_add_epi32(chunk1_32[2], chunk2_32[2]);
+			chunk2_32[3] = _mm_add_epi32(chunk1_32[3], chunk2_32[3]);
+
+			/* store back in integral image */
+			_mm_storeu_si128((__m128i *) (integral_image + curr_start), chunk2_32[0]);
+			_mm_storeu_si128((__m128i *) (integral_image + curr_start + 4), chunk2_32[1]);
+			_mm_storeu_si128((__m128i *) (integral_image + curr_start + 8), chunk2_32[2]);
+			_mm_storeu_si128((__m128i *) (integral_image + curr_start + 12), chunk2_32[3]);
 		}
 	}
 
-	/* 3. Calculate serial vertical sums of all remaining elements */
-	for(size_t j = width - ((width / 16)*4) + 1 ; j < width ; j++)
+	size_t start_addr = ((width / 16 ) * 16) -1;
+
+	for(size_t j = start_addr ; j < width ; j++)
 	{
 		uint32_t integral = 0;
 		for (size_t i = 0; i < height; i++) {
@@ -204,46 +207,9 @@ void integrate_image_optimized(const uint8_t *CSE6230_RESTRICT source_image, uin
 		}
 	}
 
-	/* We now have part of array vertically prefix summed in out, and part vertically prefix summed in integral_image */
-
-	/* 4. We now perform horizontal prefix scan */
-	__m128i sum;
 	for(size_t i = 0 ; i < height ; i++)
 	{
-		sum = _mm_setzero_si128();
-		for(size_t j = 0 ; j < out_width ; j++)
-		{
-			size_t index = i * out_width + j;
-			__m128i shifted = _mm_slli_si128(out[index], 4);
-			for(size_t k = 0 ; k < 3 ; k++)
-			{
-				out[index] = _mm_add_epi32(out[index], shifted);
-				shifted = _mm_slli_si128(shifted, 4);
-			}
-			out[index] = _mm_add_epi32(out[index], sum);
-			sum = _mm_set1_epi32(_mm_extract_epi32(out[index], 3));
-		}
-	}
-
-	/* 5. Now we write back the out to proper position in the integral image.
-	 *    We still need to perform horizontal serial prefix scan operations on the remaining elements */
-	size_t off = 0;
-	for(size_t i = 0 ; i < height ; i++)
-	{
-		off = i * width;
-		for(size_t j = 0 ; j < out_width ; j++)
-		{
-			_mm_storeu_si128((__m128i *) (integral_image + off), out[i*out_width + j]);
-			off += 4;
-		}
-	}
-
-
-	/* 6. We now have to do serial horizontal prefix sums */
-	size_t start_addr = ((width / 16 ) * 16) - 1;
-	for(size_t i = 0 ; i < height ; i++)
-	{
-		uint32_t integral = 0;
+		uint32_t integral = integral_image[i*width + start_addr -1];
 		for(size_t j = start_addr; j < width ; j++)
 		{
 			integral += integral_image[i * width + j];
@@ -269,5 +235,4 @@ void integrate_image_optimized(const uint8_t *CSE6230_RESTRICT source_image, uin
 		}
 	}
 */
-
 }
