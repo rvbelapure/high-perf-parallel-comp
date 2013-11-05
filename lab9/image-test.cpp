@@ -204,6 +204,10 @@ int main(int argc, char** argv) {
 	}
 	printf("\t\tPerformance boost: %.1lfx\n", simd_multiplication_fps / naive_multiplication_fps);
 
+	printf("Total (geometric mean):\n");
+	printf("\tNaive FPS:         %.1lf\n", sqrt(naive_conversion_fps * naive_multiplication_fps));
+	printf("\tOptimized FPS:     %.1lf\n", sqrt(simd_conversion_fps * simd_multiplication_fps));
+	printf("\tPerformance boost: %.1lfx\n", sqrt((simd_conversion_fps * simd_multiplication_fps) / (naive_conversion_fps * naive_multiplication_fps)));
 
 	release_aligned_memory(fixed_point_images);
 
