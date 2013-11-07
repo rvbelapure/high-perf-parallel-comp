@@ -18,6 +18,7 @@ void test_page_rank(const char* method_name, page_rank_iteration_function page_r
 	int32_t pages_count, int32_t link_free_pages_count,
 	size_t experiments_count, bool is_naive)
 {
+	vector_set(probabilities_old, pages_count, 1.0 / double(pages_count));
 	vector_set(probabilities_new, pages_count, 0.0);
 
 	timer page_rank_timer;
@@ -31,6 +32,18 @@ void test_page_rank(const char* method_name, page_rank_iteration_function page_r
 		link_free_pages, pages_count, link_free_pages_count);
 
 	bool conversion_test_passed = check_vector(probabilities_new, probabilities_lower, probabilities_upper, pages_count);
+	std::swap(probabilities_old, probabilities_new);
+
+	page_rank_iteration(probabilities_new, probabilities_old, matrix, columns, rows,
+		link_free_pages, pages_count, link_free_pages_count);
+	page_rank_iteration_lower(probabilities_lower, probabilities_old, matrix, columns, rows,
+		link_free_pages, pages_count, link_free_pages_count);
+	page_rank_iteration_upper(probabilities_upper, probabilities_old, matrix, columns, rows,
+		link_free_pages, pages_count, link_free_pages_count);
+	conversion_test_passed &= check_vector(probabilities_new, probabilities_lower, probabilities_upper, pages_count);
+
+	vector_set(probabilities_old, pages_count, 1.0 / double(pages_count));
+	vector_set(probabilities_new, pages_count, 0.0);
 	for (size_t experiment = 0; experiment < experiments_count; experiment++) {
 		timer page_rank_timer;
 		page_rank_iteration(probabilities_new, probabilities_old, matrix, columns, rows,
