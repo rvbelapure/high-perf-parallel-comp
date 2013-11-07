@@ -14,10 +14,6 @@ all: pagerank-test pr-turbo
 %.po : %.cpp
 	$(CXX) -fPIC $(CXXFLAGS) -std=gnu++0x -I. -c -o $@ $<
 
-probabilities-naive.log: run
-
-probabilities-optimized.log: run
-
 pr-turbo: libprturbo.so
 
 libprturbo.so: pagerank-turbo.po
@@ -26,7 +22,10 @@ libprturbo.so: pagerank-turbo.po
 pagerank-test: pagerank-test.o pagerank-reference.o timer.o
 	$(CXX) $(LDFLAGS) -o $@ $^ -lrt -ldl
 
-run: pagerank-test pr-turbo
+queue: all
+	qsub pagerank.pbs
+
+run-local: pagerank-test pr-turbo
 	@./pagerank-test
 
 report: probabilities-naive.log probabilities-optimized.log
