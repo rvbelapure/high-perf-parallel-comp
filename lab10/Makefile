@@ -33,7 +33,7 @@ report: probabilities-naive.log probabilities-optimized.log
 	@python show-urls.py
 
 grade: libprturbo.so
-	@curl -F "student=$(LOGNAME)" -F "lab=10" -F "submission=@libprturbo.so" http://mochalisa.cc.gt.atl.ga.us:8080/submit
+	@curl -F "student=$(LOGNAME)" -F "lab=10" -F "submission=@libprturbo.so" http://mochalisa.cc.gatech.edu:8080/submit
 
 clean:
 	rm -f *.o
