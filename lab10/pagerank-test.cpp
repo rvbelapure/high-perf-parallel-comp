@@ -146,7 +146,7 @@ int main(int argc, char** argv) {
 		matrix, columns, rows, link_free_pages,
 		pages_count, link_free_pages_count,
 		experiments_count, true);
-	test_page_rank("Optimized", page_rank_iteration_naive,
+	test_page_rank("Optimized", page_rank_iteration_optimized,
 		probabilities_new, probabilities_old, probabilities_lower, probabilities_upper,
 		matrix, columns, rows, link_free_pages,
 		pages_count, link_free_pages_count,
