@@ -20,7 +20,7 @@ libprturbo.so: pagerank-turbo.po
 	$(CXX) $(LDFLAGS) -shared -fPIC -o $@ $^
 
 pagerank-test: pagerank-test.o pagerank-reference.o timer.o
-	$(CXX) $(LDFLAGS) -o $@ $^ -lrt -ldl
+	$(CXX) $(LDFLAGS) -o $@ $^ -lrt -ldl -lpthread
 
 queue: all
 	qsub pagerank.pbs

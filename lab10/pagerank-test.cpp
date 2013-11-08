@@ -10,7 +10,13 @@
 #include <string.h>
 #include <assert.h>
 #include <dlfcn.h>
-#include <utility>
+
+template<class T>
+void swap(T& a, T& b) {
+	T tmp = a;
+	a = b;
+	b = tmp;
+}
 
 void test_page_rank(const char* method_name, page_rank_iteration_function page_rank_iteration,
 	double* probabilities_new, double* probabilities_old, double* probabilities_ref,
@@ -30,7 +36,7 @@ void test_page_rank(const char* method_name, page_rank_iteration_function page_r
 		link_free_pages, pages_count, link_free_pages_count);
 
 	bool conversion_test_passed = check_vector(probabilities_new, probabilities_ref, sqrt(double(pages_count)), pages_count);
-	std::swap(probabilities_old, probabilities_new);
+	swap(probabilities_old, probabilities_new);
 
 	page_rank_iteration(probabilities_new, probabilities_old, matrix, columns, rows,
 		link_free_pages, pages_count, link_free_pages_count);
@@ -171,7 +177,7 @@ int main(int argc, char** argv) {
 				printf(".");
 				fflush(stdout);
 			}
-			std::swap(probabilities_old, probabilities_new);
+			swap(probabilities_old, probabilities_new);
 			if (vector_max_abs_diff(probabilities_old, probabilities_new, pages_count) < 1.0e-9) {
 				printf("Iteration stopped\n");
 				break;
@@ -200,7 +206,7 @@ int main(int argc, char** argv) {
 				printf(".");
 				fflush(stdout);
 			}
-			std::swap(probabilities_old, probabilities_new);
+			swap(probabilities_old, probabilities_new);
 			if (vector_max_abs_diff(probabilities_old, probabilities_new, pages_count) < 1.0e-9) {
 				printf("Iteration stopped\n");
 				break;
