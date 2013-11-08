@@ -70,7 +70,7 @@ void test_conversion(const char* method_name, convert_to_floating_point_function
 }
 
 double* test_multiplication(const char* method_name, matrix_vector_multiplication_function matrix_vector_multiplication,
-	double* vector_old, double* vector_new, double* vector_lower, double* vector_upper, const double* matrix, size_t length,
+	double* vector_old, double* vector_new, double* vector_ref, double* vector_abs, const double* matrix, size_t length,
 	size_t experiments_count, bool is_naive, double& fps)
 {
 	bool multiplication_test_passed = true;
@@ -88,28 +88,26 @@ double* test_multiplication(const char* method_name, matrix_vector_multiplicatio
 			min_multiplication_ms = multiplication_ms;
 	}
 
-	for (size_t iteration = 0; iteration < 10000; iteration++) {
-		matrix_vector_multiplication(vector_new, matrix, vector_old, length, length);
-		matrix_vector_multiplication_lower(vector_lower, matrix, vector_old, length, length);
-		matrix_vector_multiplication_upper(vector_upper, matrix, vector_old, length, length);
-		if (multiplication_test_passed) {
-			multiplication_test_passed = check_vector(vector_new, vector_lower, vector_upper, length);
+	if (!is_naive) {
+		for (size_t iteration = 0; iteration < 10000; iteration++) {
+			matrix_vector_multiplication(vector_new, matrix, vector_old, length, length);
+			matrix_vector_multiplication_naive(vector_ref, matrix, vector_old, length, length);
+			matrix_vector_multiplication_abs(vector_abs, matrix, vector_old, length, length);
+			if (multiplication_test_passed) {
+				multiplication_test_passed = check_vector(vector_new, vector_ref, vector_abs, sqrt(double(length)), length);
+			}
+			normalize_vector(vector_new, length);
+			const double dp = dot_product(vector_new, vector_old, length);
+			swap(vector_old, vector_new);
+			if (iteration != 0)
+				if (fabs(1.0 - dp) <= sqrt(DBL_EPSILON))
+					break;
 		}
-		normalize_vector(vector_new, length);
-		const double dp = dot_product(vector_new, vector_old, length);
-		swap(vector_old, vector_new);
-		if (iteration != 0)
-			if (fabs(1.0 - dp) <= sqrt(DBL_EPSILON))
-				break;
 	}
 
 	fps = 1000.0 / min_multiplication_ms;
 	printf("\t%s\n", method_name);
-	if (is_naive) {
-		if (!multiplication_test_passed) {
-			printf("\t\tUnit test:         " CSE6230_ESCAPE_RED_COLOR "FAILED" CSE6230_ESCAPE_NORMAL_COLOR "\n");
-		}
-	} else {
+	if (!is_naive) {
 		printf("\t\tUnit test:         %s\n", (multiplication_test_passed ?
 			CSE6230_ESCAPE_GREEN_COLOR "PASSED" CSE6230_ESCAPE_NORMAL_COLOR:
 			CSE6230_ESCAPE_RED_COLOR "FAILED" CSE6230_ESCAPE_NORMAL_COLOR));
@@ -158,8 +156,8 @@ int main(int argc, char** argv) {
 	double* squared_matrix = static_cast<double*>(allocate_aligned_memory(image_count * image_count * sizeof(double), 64));
 	double* eigenvector_old = static_cast<double*>(allocate_aligned_memory(image_count * sizeof(double), 64));
 	double* eigenvector_new = static_cast<double*>(allocate_aligned_memory(image_count * sizeof(double), 64));
-	double* eigenvector_lower = static_cast<double*>(allocate_aligned_memory(image_count * sizeof(double), 64));
-	double* eigenvector_upper = static_cast<double*>(allocate_aligned_memory(image_count * sizeof(double), 64));
+	double* eigenvector_ref = static_cast<double*>(allocate_aligned_memory(image_count * sizeof(double), 64));
+	double* eigenvector_abs = static_cast<double*>(allocate_aligned_memory(image_count * sizeof(double), 64));
 	double* floating_point_eigencat = static_cast<double*>(allocate_aligned_memory(image_pixels * sizeof(double), 64));
 	uint8_t* fixed_point_eigencat = static_cast<uint8_t*>(allocate_aligned_memory(image_pixels * sizeof(uint8_t), 64));
 
@@ -186,7 +184,7 @@ int main(int argc, char** argv) {
 		square_matrix(squared_matrix, floating_point_images, image_pixels, image_count);
 
 		double* eigenvector = test_multiplication("Naive", matrix_vector_multiplication_naive,
-			eigenvector_old, eigenvector_new, eigenvector_lower, eigenvector_upper, squared_matrix, image_count,
+			eigenvector_old, eigenvector_new, eigenvector_ref, eigenvector_abs, squared_matrix, image_count,
 			experiments_count, true, naive_multiplication_fps);
 
 		vector_matrix_multiplication(floating_point_eigencat, eigenvector, floating_point_images, image_pixels, image_count);
@@ -200,7 +198,7 @@ int main(int argc, char** argv) {
 		square_matrix(squared_matrix, floating_point_images, image_pixels, image_count);
 
 		double* eigenvector = test_multiplication("Naive", matrix_vector_multiplication_optimized,
-			eigenvector_old, eigenvector_new, eigenvector_lower, eigenvector_upper, squared_matrix, image_count,
+			eigenvector_old, eigenvector_new, eigenvector_ref, eigenvector_abs, squared_matrix, image_count,
 			experiments_count, false, simd_multiplication_fps);
 
 		vector_matrix_multiplication(floating_point_eigencat, eigenvector, floating_point_images, image_pixels, image_count);
@@ -223,8 +221,8 @@ int main(int argc, char** argv) {
 	release_aligned_memory(squared_matrix);
 	release_aligned_memory(eigenvector_old);
 	release_aligned_memory(eigenvector_new);
-	release_aligned_memory(eigenvector_lower);
-	release_aligned_memory(eigenvector_upper);
+	release_aligned_memory(eigenvector_ref);
+	release_aligned_memory(eigenvector_abs);
 	release_aligned_memory(floating_point_eigencat);
 	release_aligned_memory(fixed_point_eigencat);
 

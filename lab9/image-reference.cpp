@@ -3,6 +3,7 @@
 #include <math.h>
 #include <assert.h>
 #include <fenv.h>
+#include <float.h>
 
 void convert_to_floating_point_naive(const uint8_t *CSE6230_RESTRICT fixed_point_images, double *CSE6230_RESTRICT floating_point_images, size_t image_width, size_t image_height, size_t image_count) {
 	for (size_t image_number = 0; image_number < image_count; image_number++) {
@@ -45,7 +46,6 @@ void convert_to_floating_point_lower(const uint8_t *CSE6230_RESTRICT fixed_point
 }
 #pragma STDC FENV_ACCESS OFF
 
-
 void matrix_vector_multiplication_naive(double *CSE6230_RESTRICT output_vector, const double *CSE6230_RESTRICT matrix, const double *CSE6230_RESTRICT input_vector, size_t matrix_width, size_t matrix_height) {
 	for (size_t i = 0; i < matrix_height; i++) {
 		double accumulated_sum = 0.0;
@@ -56,33 +56,15 @@ void matrix_vector_multiplication_naive(double *CSE6230_RESTRICT output_vector, 
 	}
 }
 
-#pragma STDC FENV_ACCESS ON
-void matrix_vector_multiplication_upper(double *CSE6230_RESTRICT output_vector, const double *CSE6230_RESTRICT matrix, const double *CSE6230_RESTRICT input_vector, size_t matrix_width, size_t matrix_height) {
-	const int original_rounding_mode = fegetround();
-	fesetround(FE_UPWARD);
+void matrix_vector_multiplication_abs(double *CSE6230_RESTRICT output_vector, const double *CSE6230_RESTRICT matrix, const double *CSE6230_RESTRICT input_vector, size_t matrix_width, size_t matrix_height) {
 	for (size_t i = 0; i < matrix_height; i++) {
 		double accumulated_sum = 0.0;
 		for (size_t j = 0; j < matrix_width; j++) {
-			accumulated_sum += matrix[i * matrix_width + j] * input_vector[j];
+			accumulated_sum += fabs(matrix[i * matrix_width + j]) * fabs(input_vector[j]);
 		}
 		output_vector[i] = accumulated_sum;
 	}
-	fesetround(original_rounding_mode);
 }
-
-void matrix_vector_multiplication_lower(double *CSE6230_RESTRICT output_vector, const double *CSE6230_RESTRICT matrix, const double *CSE6230_RESTRICT input_vector, size_t matrix_width, size_t matrix_height) {
-	const int original_rounding_mode = fegetround();
-	fesetround(FE_DOWNWARD);
-	for (size_t i = 0; i < matrix_height; i++) {
-		double accumulated_sum = 0.0;
-		for (size_t j = 0; j < matrix_width; j++) {
-			accumulated_sum += matrix[i * matrix_width + j] * input_vector[j];
-		}
-		output_vector[i] = accumulated_sum;
-	}
-	fesetround(original_rounding_mode);
-}
-#pragma STDC FENV_ACCESS OFF
 
 bool check_images(const double *CSE6230_RESTRICT images, const double *CSE6230_RESTRICT images_lower, const double *CSE6230_RESTRICT images_upper, size_t image_width, size_t image_height, size_t image_count) {
 	for (size_t image_number = 0; image_number < image_count; image_number++) {
@@ -198,9 +180,9 @@ void normalize_vector(double *CSE6230_RESTRICT vector, size_t length) {
 	vector_scale(vector, length, scale_factor);
 }
 
-bool check_vector(const double *CSE6230_RESTRICT vector, const double *CSE6230_RESTRICT vector_lower, const double *CSE6230_RESTRICT vector_upper, size_t length) {
+bool check_vector(const double *CSE6230_RESTRICT vector, const double *CSE6230_RESTRICT vector_ref, const double *CSE6230_RESTRICT vector_abs, double eps_error, size_t length) {
 	for (size_t i = 0; i < length; i++) {
-		if ((vector[i] > vector_upper[i]) || (vector[i] < vector_lower[i])) {
+		if (fabs(vector[i] - vector_ref[i]) > vector_abs[i] * DBL_EPSILON * eps_error) {
 			return false;
 		}
 	}
