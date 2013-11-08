@@ -8,7 +8,13 @@
 #include <float.h>
 #include <string.h>
 #include <dlfcn.h>
-#include <utility>
+
+template <class T>
+void swap(T& a, T& b) {
+	T tmp = a;
+	a = b;
+	b = tmp;
+}
 
 void write_integral_error_image(const char* integral_error_image_path,
 	const uint32_t* integral_image, const uint32_t* reference_integral_image,
@@ -91,7 +97,7 @@ double* test_multiplication(const char* method_name, matrix_vector_multiplicatio
 		}
 		normalize_vector(vector_new, length);
 		const double dp = dot_product(vector_new, vector_old, length);
-		std::swap(vector_old, vector_new);
+		swap(vector_old, vector_new);
 		if (iteration != 0)
 			if (fabs(1.0 - dp) <= sqrt(DBL_EPSILON))
 				break;

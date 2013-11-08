@@ -19,7 +19,7 @@ libsimdimage.so: image-simd.po
 	$(CXX) $(LDFLAGS) -shared -fPIC -o $@ $^
 
 image-test: image-test.o image-reference.o image-io.o timer.o
-	$(CXX) $(LDFLAGS) -o $@ $^ -lrt -ldl
+	$(CXX) $(LDFLAGS) -o $@ $^ -lrt -ldl -lpthread
 
 grade: libsimdimage.so
 	@curl -F "student=$(LOGNAME)" -F "lab=9" -F "submission=@libsimdimage.so" http://coffeelab.cc.gt.atl.ga.us:8080/submit
