@@ -2,9 +2,9 @@
 #include <pagerank.hpp>
 #include <math.h>
 #include <assert.h>
-#include <fenv.h>
+#include <float.h>
 
-double* page_rank_iteration_naive(double *CSE6230_RESTRICT probabilities_new, const double *CSE6230_RESTRICT probabilities_old,
+void page_rank_iteration_naive(double *CSE6230_RESTRICT probabilities_new, const double *CSE6230_RESTRICT probabilities_old,
 	const double *CSE6230_RESTRICT matrix, const int32_t*CSE6230_RESTRICT  columns, const int32_t*CSE6230_RESTRICT rows,
 	const int32_t *CSE6230_RESTRICT link_free_pages, int32_t pages_count, int32_t link_free_pages_count)
 {
@@ -26,60 +26,6 @@ double* page_rank_iteration_naive(double *CSE6230_RESTRICT probabilities_new, co
 		probabilities_new[page] = transition_probability;
 	}
 }
-
-#pragma STDC FENV_ACCESS ON
-double* page_rank_iteration_upper(double *CSE6230_RESTRICT probabilities_new, const double *CSE6230_RESTRICT probabilities_old,
-	const double *CSE6230_RESTRICT matrix, const int32_t*CSE6230_RESTRICT  columns, const int32_t*CSE6230_RESTRICT rows,
-	const int32_t *CSE6230_RESTRICT link_free_pages, int32_t pages_count, int32_t link_free_pages_count)
-{
-	const int original_rounding_mode = fegetround();
-	fesetround(FE_UPWARD);
-	for (int32_t page = 0; page < pages_count; page++) {
-		double transition_probability = 0.0;
-
-		/* First process transitions from link-free pages */
-		for (int32_t link_free_page_index = 0; link_free_page_index < link_free_pages_count; link_free_page_index++) {
-			const int32_t column_index = link_free_pages[link_free_page_index];
-			transition_probability += probabilities_old[column_index];
-		}
-		transition_probability /= double(pages_count);
-
-		/* Not process transitions form pages with links */
-		for (int32_t index = rows[page], row_end = rows[page + 1]; index != row_end; index++) {
-			const int32_t column_index = columns[index];
-			transition_probability += matrix[index] * probabilities_old[column_index];
-		}
-		probabilities_new[page] = transition_probability;
-	}
-	fesetround(original_rounding_mode);
-}
-
-double* page_rank_iteration_lower(double *CSE6230_RESTRICT probabilities_new, const double *CSE6230_RESTRICT probabilities_old,
-	const double *CSE6230_RESTRICT matrix, const int32_t*CSE6230_RESTRICT  columns, const int32_t*CSE6230_RESTRICT rows,
-	const int32_t *CSE6230_RESTRICT link_free_pages, int32_t pages_count, int32_t link_free_pages_count)
-{
-	const int original_rounding_mode = fegetround();
-	fesetround(FE_DOWNWARD);
-	for (int32_t page = 0; page < pages_count; page++) {
-		double transition_probability = 0.0;
-
-		/* First process transitions from link-free pages */
-		for (int32_t link_free_page_index = 0; link_free_page_index < link_free_pages_count; link_free_page_index++) {
-			const int32_t column_index = link_free_pages[link_free_page_index];
-			transition_probability += probabilities_old[column_index];
-		}
-		transition_probability /= double(pages_count);
-
-		/* Not process transitions form pages with links */
-		for (int32_t index = rows[page], row_end = rows[page + 1]; index != row_end; index++) {
-			const int32_t column_index = columns[index];
-			transition_probability += matrix[index] * probabilities_old[column_index];
-		}
-		probabilities_new[page] = transition_probability;
-	}
-	fesetround(original_rounding_mode);
-}
-#pragma STDC FENV_ACCESS OFF
 
 void vector_set(double *CSE6230_RESTRICT vector, size_t length, double constant) {
 	for (size_t i = 0; i < length; i++) {
@@ -103,9 +49,9 @@ double vector_max_abs_diff(const double *CSE6230_RESTRICT vector_x, const double
 	return max_abs_diff;
 }
 
-bool check_vector(const double *CSE6230_RESTRICT vector, const double *CSE6230_RESTRICT vector_lower, const double *CSE6230_RESTRICT vector_upper, size_t length) {
+bool check_vector(const double *CSE6230_RESTRICT vector, const double *CSE6230_RESTRICT vector_ref, double eps_error, size_t length) {
 	for (size_t i = 0; i < length; i++) {
-		if ((vector[i] > vector_upper[i]) || (vector[i] < vector_lower[i])) {
+		if (fabs(vector[i] - vector_ref[i]) > fabs(vector_ref[i]) * DBL_EPSILON * eps_error) {
 			return false;
 		}
 	}
