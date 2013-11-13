@@ -71,27 +71,62 @@ void convert_to_floating_point_optimized(const uint8_t *CSE6230_RESTRICT fixed_p
 void matrix_vector_multiplication_optimized(double *CSE6230_RESTRICT output_vector, const double *CSE6230_RESTRICT matrix, const double *CSE6230_RESTRICT input_vector, size_t matrix_width, size_t matrix_height) {
 
 	int flag = (matrix_width % 4 == 0) ? 0 : 1;
-	size_t limit = (matrix_width / 4) * 4;
+	size_t climit = (matrix_width / 4) * 4;
+	size_t rlimit = (matrix_height / 2) * 2;
 
-	for(size_t i = 0 ; i < matrix_height ; i++)
+	for(size_t i = 0 ; i < rlimit ; i += 2)
 	{
-		__m128d sum = _mm_setzero_pd();
-		double acquired_sum = 0.0;
-		for(size_t j = 0 ; j < limit ; j += 4)
+		__m128d sum1 = _mm_setzero_pd();
+		double acquired_sum1 = 0.0;
+		__m128d sum2 = _mm_setzero_pd();
+		double acquired_sum2 = 0.0;
+		for(size_t j = 0 ; j < climit ; j += 4)
 		{
-			__m128d input1 = _mm_loadu_pd((const double *) (input_vector + j));
-			__m128d input2 = _mm_loadu_pd((const double *) (input_vector + j + 2));
-			__m128d row1 = _mm_loadu_pd((const double *) (matrix + (i*matrix_width) + j));
-			__m128d row2 = _mm_loadu_pd((const double *) (matrix + (i*matrix_width) + j + 2));
-			sum = _mm_add_pd(sum, _mm_add_pd(_mm_mul_pd(input1, row1), _mm_mul_pd(input2, row2)));
+			__m128d input0 = _mm_loadu_pd((const double *) (input_vector + j));
+			__m128d input1 = _mm_loadu_pd((const double *) (input_vector + j + 2));
+			__m128d row00 = _mm_loadu_pd((const double *) (matrix + (i*matrix_width) + j));
+			__m128d row01 = _mm_loadu_pd((const double *) (matrix + (i*matrix_width) + j + 2));
+			__m128d row10 = _mm_loadu_pd((const double *) (matrix + ((i+1)*matrix_width) + j));
+			__m128d row11 = _mm_loadu_pd((const double *) (matrix + ((i+1)*matrix_width) + j + 2));
+
+			sum1 = _mm_add_pd(sum1, _mm_add_pd(_mm_mul_pd(input0, row00), _mm_mul_pd(input1, row01)));
+			sum2 = _mm_add_pd(sum2, _mm_add_pd(_mm_mul_pd(input0, row10), _mm_mul_pd(input1, row11)));
 		}
-		acquired_sum =  _mm_cvtsd_f64( _mm_hadd_pd(sum,zero_d) );
+		acquired_sum1 =  _mm_cvtsd_f64( _mm_hadd_pd(sum1,zero_d) );
+		acquired_sum2 =  _mm_cvtsd_f64( _mm_hadd_pd(sum2,zero_d) );
 		if(flag)
 		{
-			for(size_t j = limit ; j < matrix_width ; j++)
-				acquired_sum += matrix[i * matrix_width + j] * input_vector[j];
+			for(size_t j = climit ; j < matrix_width ; j++)
+			{
+				acquired_sum1 += matrix[i * matrix_width + j] * input_vector[j];
+				acquired_sum2 += matrix[(i+1) * matrix_width + j] * input_vector[j];
+			}
 		}
-		output_vector[i] = acquired_sum;
+		output_vector[i] = acquired_sum1;
+		output_vector[i+1] = acquired_sum2;
+	}
+
+	if(matrix_height % 2 != 0)
+	{
+		size_t i = rlimit;
+		__m128d sum1 = _mm_setzero_pd();
+		double acquired_sum1 = 0.0;
+		for(size_t j = 0 ; j < climit ; j += 4)
+		{
+			__m128d input0 = _mm_loadu_pd((const double *) (input_vector + j));
+			__m128d input1 = _mm_loadu_pd((const double *) (input_vector + j + 2));
+			__m128d row00 = _mm_loadu_pd((const double *) (matrix + (i*matrix_width) + j));
+			__m128d row01 = _mm_loadu_pd((const double *) (matrix + (i*matrix_width) + j + 2));
+
+			sum1 = _mm_add_pd(sum1, _mm_add_pd(_mm_mul_pd(input0, row00), _mm_mul_pd(input1, row01)));
+		}
+		acquired_sum1 =  _mm_cvtsd_f64( _mm_hadd_pd(sum1,zero_d) );
+		if(flag)
+		{
+			for(size_t j = climit ; j < matrix_width ; j++)
+				acquired_sum1 += matrix[i * matrix_width + j] * input_vector[j];
+		}
+		output_vector[i] = acquired_sum1;
 	}
 
 /*	for (size_t i = 0; i < matrix_height; i++) {
