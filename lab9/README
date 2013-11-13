@@ -7,12 +7,14 @@ Note : Please compile using standard Makefile given with the lab (compiler : GCC
        The code has been vectorized to achieve the required performance of
        approximately 3500 FPS.
 
-**     FOR INFO PURPOSES ONLY. KINDLY DO NOT USE THIS CONFIGURATION.
-       But it was also observed that, following changes in Makefile gives the
-       required perf (approx 3100 FPS) for the naive implementation as well.
+**     FOR INFO PURPOSES ONLY. KINDLY DO NOT USE THE FOLLOWING CONFIGURATION.
+       It was also observed that, making following changes in Makefile achieves the
+       required perf (approx 3050 FPS) for the naive implementation as well.
        1. Replace option -O3 by -Ofast
        2. Disable debug info by removing -g option
        3. Use icpc compiler (pass CXX=icpc while doing 'make')
+       But this is a very borderline case. We want to achieve more performance.
+       As a result, we have vectorized the code for decent performance speedup.
 
 ===============================================================================
 
