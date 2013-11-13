@@ -12,36 +12,40 @@ void convert_to_floating_point_optimized(const uint8_t *CSE6230_RESTRICT fixed_p
 	size_t total_Count = image_count * image_height * image_width;
 	for(size_t offset = 0 ; offset < total_Count ; offset += 16)
 	{
+		/* Load 128 bits into vector - 16 eight bit unsigned ints*/
 		__m128i chunk = _mm_load_si128((const __m128i *) (fixed_point_images + offset));
 
-
+		/* shuffle to convert it to 4 chunks of four 32 bit unsigned ints */
 		__m128i part1_32 = _mm_shuffle_epi8(chunk, shuff1);
 		__m128i part2_32 = _mm_shuffle_epi8(chunk, shuff2);
 		__m128i part3_32 = _mm_shuffle_epi8(chunk, shuff3);
 		__m128i part4_32 = _mm_shuffle_epi8(chunk, shuff4);
 
-
+		
+		/* convert 32 bit uints to 64 bit doubles. Then divide them by 255. (Actually, multiply by 1/255) 
+		 * The convert and divide operations are interleaved to get good L1-hit rate. 
+		 * This increases performance by 0.1x to 0.2x over what we get without interleaving. */
 		__m128d part1_d_lo = _mm_cvtepi32_pd(part1_32);
 		__m128d part1_d_hi = _mm_cvtepi32_pd( _mm_srli_si128(part1_32,8) );
+		part1_d_lo = _mm_mul_pd(part1_d_lo, factor);
+		part1_d_hi = _mm_mul_pd(part1_d_hi, factor);
 
 		__m128d part2_d_lo = _mm_cvtepi32_pd(part2_32);
 		__m128d part2_d_hi = _mm_cvtepi32_pd( _mm_srli_si128(part2_32,8) );
+		part2_d_lo = _mm_mul_pd(part2_d_lo, factor);
+		part2_d_hi = _mm_mul_pd(part2_d_hi, factor);
 
 		__m128d part3_d_lo = _mm_cvtepi32_pd(part3_32);
 		__m128d part3_d_hi = _mm_cvtepi32_pd( _mm_srli_si128(part3_32,8) );
+		part3_d_lo = _mm_mul_pd(part3_d_lo, factor);
+		part3_d_hi = _mm_mul_pd(part3_d_hi, factor);
 
 		__m128d part4_d_lo = _mm_cvtepi32_pd(part4_32);
 		__m128d part4_d_hi = _mm_cvtepi32_pd( _mm_srli_si128(part4_32,8) );
-
-		part1_d_lo = _mm_mul_pd(part1_d_lo, factor);
-		part1_d_hi = _mm_mul_pd(part1_d_hi, factor);
-		part2_d_lo = _mm_mul_pd(part2_d_lo, factor);
-		part2_d_hi = _mm_mul_pd(part2_d_hi, factor);
-		part3_d_lo = _mm_mul_pd(part3_d_lo, factor);
-		part3_d_hi = _mm_mul_pd(part3_d_hi, factor);
 		part4_d_lo = _mm_mul_pd(part4_d_lo, factor);
 		part4_d_hi = _mm_mul_pd(part4_d_hi, factor);
 
+		/* store everything back */
 		_mm_store_pd((double *) (floating_point_images + offset), part1_d_lo);
 		_mm_store_pd((double *) (floating_point_images + offset + 2), part1_d_hi);
 		_mm_store_pd((double *) (floating_point_images + offset + 4), part2_d_lo);
