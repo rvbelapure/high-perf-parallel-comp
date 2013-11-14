@@ -230,6 +230,7 @@ int main(int argc, char** argv) {
 	release_aligned_memory(probabilities_old);
 	release_aligned_memory(probabilities_new);
 	release_aligned_memory(probabilities_ref);
+	release_aligned_memory(matrix);
 	release_aligned_memory(rows);
 	release_aligned_memory(columns);
 
