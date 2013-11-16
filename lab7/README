@@ -1,0 +1,12 @@
+# LAB 7         : GPU Reduction
+# Author        : Raghavendra Belapure, Karanjit Singh Cheema
+# GTID          : 902866342, 902757702
+# -----------------------------------------------------------------------------
+
+Part 1 : interleaved addressing
+Part 2 : non-divergent threading
+Part 3 : sequential addressing
+Part 4 : first add during load
+Part 5 : unrolling the last warp
+Part 6 : unrolling the entire loop
+Part 7 : multiple elements per thread
