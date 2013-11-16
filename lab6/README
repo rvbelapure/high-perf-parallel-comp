@@ -1,0 +1,14 @@
+# LAB 6         : CUDA - Matrix-Matrix multiplication
+# Author        : Raghavendra Belapure, Karanjit Singh Cheema
+# GTID          : 902866342, 902757702
+# -----------------------------------------------------------------------------
+
+In Part 1, we increased the number of computations per thread to hide the
+latency. This way, the performance was boosted from 72 GFLOPS to 475 GFLOPS.
+
+In Part 2, we continue with this optimizations. We divide the block in two 
+dimensions, instead of only in 1 dimension. We also keep our tile size as
+32x32 but reduce the threads in block to incorporate more work for the block. 
+We reduce the number of threads in the block so that a block of 16x4 threads 
+work on a tile of size 32x32. This allowed us to reach the performance of 
+approx. 560 GFLOPS.
