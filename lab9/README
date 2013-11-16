@@ -1,0 +1,63 @@
+# LAB 9         : Floating-Point SIMD
+# Author        : Raghavendra Belapure, Karanjit Singh Cheema
+# GTID          : 902866342, 902757702
+# -----------------------------------------------------------------------------
+
+Note : Please compile using standard Makefile given with the lab (compiler : GCC)
+       The code has been vectorized to achieve the required performance of
+       approximately 3500 FPS.
+
+**     FOR INFO PURPOSES ONLY. KINDLY DO NOT USE THE FOLLOWING CONFIGURATION.
+       It was also observed that, making following changes in Makefile achieves the
+       required perf (approx 3050 FPS) for the naive implementation as well.
+       1. Replace option -O3 by -Ofast
+       2. Disable debug info by removing -g option
+       3. Use icpc compiler (pass CXX=icpc while doing 'make')
+       But this is a very borderline case. We want to achieve more performance.
+       As a result, we have vectorized the code for decent performance speedup.
+
+===============================================================================
+
+Part 1 : Fixed to Floating Point Conversion
+-----------------------------------------------
+The goal in this part is to convert the uint8_t values, which lie between 0 to
+255, into double precision floating point values, which lie between 0 and 1.
+
+We perform the conversion as follows.
+1. We load the 8 bit unsigned ints into the SSE 128-bit vector. Thus, 16 such
+   values are loaded. Thus, we have following representation.
+
+   SSE vector : v15 v14 v13 v12 ...... v3 v2 v1 v0
+
+2. We use the SSE shuffle function to convert these into 32 bit form. Thus, we
+   divide this vector into 4 chunks as follows
+
+   vec1 : 0 0 0 v3 0 0 0 v2 0 0 0 v1 0 0 0 v0
+   vec2 : 0 0 0 v7 0 0 0 v6 0 0 0 v5 0 0 0 v4
+   and so on.
+
+3. We use _mm_cvtepi32_pd() function, which converts and packs lower two 32 bit
+   unsigned ints into two 64-bit double precision values. Thus each of the vec1,
+   vec2, vec3 and vec4 give us 2 SSE vectors each, which hold 2 double values.
+
+4. We perform vector division on these vectors. As the division costs more cycles
+   than multiplication, we perform the division m = (1.0 / 255.0) only once and then
+   use this value of m as multiplying factor for subsequent divisions.
+
+5. Finally, the result is stored back into the output array.
+
+===============================================================================
+
+Part 2 : Matrix-Vector Multiplication
+-------------------------------------------
+There are two places in this part where we can optimize.
+1. Same vector multiplies all rows in the matrix. Thus, we halve the number of iterations
+   in outer for loop by reusing the same loaded values of vector. Thus, we save some of
+   the redundant calculation.
+
+2. We can add more values per inner for loop by loading more elements per iteration.
+   This reduces the number of iterations of the inner for loop by factor of 4.
+
+As a result, we get approximately 3x speedup in overall performance. More speedup
+can be achieved by exploiting point (1) further, such that the iterations of the
+outer for loop are reduced significantly.
