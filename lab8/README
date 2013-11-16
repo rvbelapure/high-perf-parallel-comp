@@ -1,0 +1,70 @@
+# LAB 8         : SIMD for Image Processing and Computer Vision
+# Author        : Raghavendra Belapure, Karanjit Singh Cheema
+# GTID          : 902866342, 902757702
+# -----------------------------------------------------------------------------
+
+Part 1 : Optimization of Image Integration
+-----------------------------------------
+
+The basic approach behind the integration is that we have to perform horizontal 
+and vertical prefix scans. The SSE instructions load 128 bits at a time. Also,
+our source image is using 8bit representation of unsigned ints. Thus, when we
+load the elements, we will be loading 16 elements at a time. As the width is
+divisible by 8 (given), we can not assume that it will be divisible by 16. Thus,
+there will be some elements remaining at the end of each row. Thus, we have to
+perform serial operations on those elements. Thus, the image will be covered as
+follows.
+	|<--------c-------->|<-s->|
+	|-------------------|-----|
+	|		    |  S  |
+	|		    |  e  |
+	|		    |  r  |
+	|       SIMD        |  i  |
+	|		    |  a  |
+	|                   |  l  |
+	|-------------------|-----|
+
+Consider row i. We assume that integral operation for all the rows before ith
+row have been performed and that we have the results of such operations. The
+algorithm is as follows -
+for i over all rows
+do
+	sum = 0
+	for j from 0 to c
+	do
+		c1 = load M[i-1][j] (unpacked to 32 bit to avoid overflow)
+		c2 = load M[i][j]
+		perform horizontal prefix sum
+		add c1 to c2
+		store the result to integral image
+	done
+done
+
+Now, the SIMD part is completely evaluated. We can now just run two serial loops
+similar to naive implementation to evaluate the serial part of the image.
+
+
+Part 2 : Optimization of Interleaved RGB to Grayscale Conversion
+----------------------------------------------------------------
+The RGB to Grayscale conversion is done using following formula
+luma  = (red * 54 + green * 183 + blue * 19) >> 8;
+Thus, we can load these RGB values into SSE vectors and perform
+the vectorized operations to find the luminosity in grayscale.
+
+Total elements in RGB image are = height * width * 3;
+Total elements in grayscale image are = height * width;
+As height is divisible by 4, and width is divisible by 8,
+total elements are divisible by 48.
+
+Thus, we take 48 elements (load into 3 __128i vectors) and then
+deinterleave them using shuffles and OR operations into separate
+R-G-and-B streams. The de-interleaving process can be shown as -->
+
+Loaded vectors are -
+b15 g15 r15 b14 g14 r14 ...... b1 g1 r1 b0 g0 r0
+
+The de-interleaved vectors are -
+b15 b14 ... b1 b0  ; g15 g14 ... g1 g0 ; r15 r14 ... r1 r0
+
+Now we can perform vector operations (add, mul, shift) using SSE
+and generate the luma values. They can be stored in the output array.
