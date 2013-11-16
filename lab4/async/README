@@ -1,0 +1,170 @@
+# LAB 4		: Asynchronous Communication in MPI
+# Author 	: Raghavendra Belapure, Karanjit Singh Cheema
+# GTID		: 902866342, 902757702
+-------------------------------------------------------------------------------
+
+Ques 1 : Suppose we set t_delay to 0 and observe the return value of this 
+	 function on rank 0. What does the return value tell you?
+
+Answer : If the t_delay variable is set to zero, it implies that the busywait 
+	 function will return without any computation. Thus, the return value
+	 of async_comm_test will consist of only the communication latency
+	 between the two ranks as observed by rank 0.
+
+-------------------------------------------------------------------------------
+
+Ques 2 : Suppose we now gradually increase t_delay. Describe what you would 
+	 expect to happen to the return value on rank 0 if computation and 
+	 communication are not overlapped. What you would instead see if they 
+	 are overlapped?
+
+Answer : Let us consider both cases.
+	 1. Computation and communication are NOT overlapped
+	    This implies that the computation and the communication part of the
+	    micro-benchmark will be serialized by MPI and we will see a linearly
+	    increasing trend in the return value of async_comm_test function as
+	    every time, the returned value would be summation of computation
+	    time and communication latency.
+	    In short, the function can be represented as-
+	    async_comm_test = communication latency + computation delay;
+
+	 2. Computation and communication are overlapped
+	    In this case, we would not see any difference in return value of
+	    async_comm_test function till computation delay is less than or 
+	    equal to the communication latency (as both the tasks are being
+	    executed simultaneously). Thus, initially, the return value would
+	    be equal to the communication latency. If computation delay is more
+	    than the communication latency, then the output will be equal to the
+	    computation delay as communication has already completed before the
+	    computation completes.
+	    In short, the function can be represented as-
+	    async_comm_test = max(communication latency, computation delay);
+
+-------------------------------------------------------------------------------
+
+Ques 3 : Based on your answer to Question 2 and these measured data, is 
+	 computation-communication overlap occurring or not? 
+
+Answer : Yes. The overlap is taking place.
+	 The data in file async-isend.dat and the graph async-isend.png clearly
+	 show that the returned value remains constant till it reaches 0.0025sec
+	 and then increases linearly wrt the delay. In fact, it does exhibit the
+	 behavior described in Q2 that the value is maximum of communication
+	 latency and computation delay.
+
+-------------------------------------------------------------------------------
+
+Ques 4 : Using your data and the known message size, estimate the effective 
+	 communication bandwidth. 
+
+Answer : Message size = 8 MiB = 8388608 bytes
+	 Communication delay = 0.0025 sec
+
+	 This number was obtained by observing the data and choosing a point X
+	 such that initially, before point X, the return value is constant for
+	 every reading and starting from point X the function starts returning 
+	 the value equal to computation delay.
+
+	 Thus, communication bandwidth = 8388608 bytes / 0.0025 sec
+	 			       = 3355443200 bytes per sec
+				       = 3276800 kilobytes per sec
+				       = 3200 megabytes per sec
+				       = 3.125 gigabytes per sec
+	
+	(The conversion was done by repetitively dividing each number by 1024)
+
+-------------------------------------------------------------------------------
+
+Ques 5 : Now that OpenMP is enabled, re-run the benchmark. In your README, 
+	 briefly comment on any major differences you observe in the output, 
+	 if any, when compared to the non-OpenMP output.
+
+Answer : Let the earlier experiment be called E1 and the one after enabling
+	 openMP and blocking send be called E2.
+	 Differences observed in output are as follows -
+	 1. In the experimental parameters displayed on stderr,
+	    E1 : OpenMP disabled.
+	    E2 : OpenMP enabled; support level: MPI_THREAD_MULTIPLE
+	 2. In the async.dat file, the communication latency is now increased
+	    to 0.0690 sec from 0.0025 sec.
+	 3. Also, in async.dat file, it can be seen that computation and
+	    communication are now NOT overlapped and the function now returns
+	    values according to rule - 
+	    async_comm_test = communication latency + computation delay;
+	 4. The graph async-blocking-send.png also shows the behavior observed
+	    in point 3 here.
+
+-------------------------------------------------------------------------------
+
+Ques 6 : Use OpenMP threading and directives to overlap the MPI_Send call and 
+	 the busywait call.
+
+Answer : The overlapping of MPI_Send and busywait computation was achieved in
+	 as follows. Our goal is to overlap the MPI_Send and busywait calls. So
+	 we can use OpenMP tasks to achieve the same. Thus, we create a task
+	 from MPI_Send call and allow the master thread to execute busywait.
+	 We also ensure that both operations are complete before returning
+	 from the async_comm_test function using taskwait directive.
+	 Thus, the code snippet can be shown as
+
+ 	#pragma omp task default(none) shared(msgbuf, ompi_mpi_comm_world, ompi_mpi_int)
+	MPI_Send (msgbuf, len, MPI_INT, 1, MSG_TAG, MPI_COMM_WORLD);
+	busywait (t_delay);
+ 	#pragma omp taskwait
+
+	 Also, we want to make sure that the async_comm_test function is
+	 executed by only one thread. As a result, we put the omp single
+	 directive before it. The snippet can be shown as -
+
+	#pragma omp parallel
+	#pragma omp single nowait
+	t_elapsed = async_comm_test (t_delay, rank, msgbuf, msglen);
+
+	 **The proof that we have indeed parallelized MPI_Send and busywait :
+
+	 According to file async-blocking-send.dat, the time required to execute
+	 the micro-benchmark function async_comm_test is directly proportional
+	 to the busywait delay and shows the relationship 
+	 async_comm_test = communication latency + computation delay;
+
+	 Whereas, except for few outliers, most of the data-points in 
+	 async-omp-blocking-send.dat show that the they are approx equal to
+	 0.0690 where 0.0690 was the observed communication latency and 0.01 is
+	 maximum busywait delay. Thus, the overlap relation described in Q1,
+	 async_comm_test = max(communication latency, computation delay);
+	 holds true.
+
+	 The same inference can be drawn from the corresponding graphs where
+	 the results of the experiment increase linearly with busywait delay
+	 when OpenMP is enabled but not used, and the results remain constant
+	 and equal to communication latency (as it is more than busywait delay)
+	 in-spite of variation in busywait delay.
+
+-------------------------------------------------------------------------------
+
+Ques 7 : How does the effective bandwidth of MPI_Send() compare to MPI_Isend() +
+	 MPI_Wait() ?
+
+Answer : We have calculated the effective bandwidth of MPI_Isend() +
+	 MPI_Wait() in Question 4, which is 3.125 gigabytes per sec. Now, we
+	 calculate the effective bandwidth for MPI_Send. As every entry is 
+	 approximately equal to or greater than 0.0690, and our max busywait
+	 duration is 0.01, the communication latency will be the determining
+	 factor for the return value. Thus we take avg of all the values in
+	 async-omp-blocking-send.dat without the outliers and then use that
+	 time as average communication latency. Thus,
+
+	 Message size = 8 MiB = 8388608 bytes
+	 Average Communication delay =  0.06954 sec
+	 Thus, communication bandwidth = 8388608 bytes / 0.06954 sec
+	 			       = 120629968.36 bytes per sec
+				       = 117802.70 kilobytes per sec
+				       = 115.04 megabytes per sec
+	
+	(The conversion was done by repetitively dividing each number by 1024)
+
+	Thus, effective bandwidth of MPI_Send() is just 115.04 megabytes per sec,
+	whereas effective bandwidth of MPI_Isend() + MPI_Wait() is as large as
+	3.125 gigabytes per sec.
+
+-------------------------------------------------------------------------------
