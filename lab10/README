@@ -1,0 +1,20 @@
+# LAB 10        : Sparse Operations
+# Author        : Raghavendra Belapure, Karanjit Singh Cheema
+# GTID          : 902866342, 902757702
+# -----------------------------------------------------------------------------
+
+Part 1 : Optimization of PageRank Iteration
+---------------------------------------------
+
+We make following observation regarding the naive version of the function that
+is called on each iteration of the page rank algorithm :
+
+The effect of link-free pages on transition probability for a page is only a 
+function of previous probabilities and it does not depend any quantity that
+varies per page. Thus, this value can be calculated only once and then it 
+can added to the transition probabilities of individual pages. Thus, we move
+the loop calculating this value outside the loop that iterates over pages and
+then initialize the transition_probability with this value instead at the 
+beginning of each iteration over every page.
+
+This gives us performance of approximately 6050 IPS, which is ~400x speedup.
